@@ -4,83 +4,91 @@ library(tidyverse)
 library(ppcor)
 library(vegan)
 library(entropy)
+library(faux)
 
+options(scipen=999)
 #======================
 # notes/to-do
 #======================
 
 # 1. ERn = 1 case can be handled by adding a blank strategy (set ERblankn>=1)
 # 2. Explore if there's a way out other than choosing between an unwanted
-    #-ve association with resample_mean or +ve association with scalemax.
+    #-ve association with ER_mean or +ve association with scalemax.
     #E.g., Extra adjustment, say, add ERn and scalemax to denominator of Euclidean distance?
 # 3. Produce data visualizations to see if relationships are linear or not
 # 4. Add RQA
+# 5. Add successive dissimlarity
 
 #======================
 # simulation setup
 #======================
 
-n <- 10 #number of observation (time points per participant)
-ERblankn <- 0 #number of "unused" (always 0) ER strategies
-simn <- 2 #number of simulations (participant)
+# study design
+n <- 2 #number of observation (time points per participant)
+simn <- 5 #number of simulations (participant)
 scalemin <- 0
+
+# other settings andtesting conditions
+ERblankn <- 1 # number of "unused" (always 0) ER strategies. Always set >=1 (between-SD needs at least 2 to calculate)
+zerotransform <- TRUE # whether or not to replace 0 with 0.0001. TRUE recommended because 0 are not true 0
 rounding <- TRUE # whether or not round scores to integers
 firstrowzero <- FALSE # testing purpose: set TRUE to force first row to be all 0
-testnonoverlap <- TRUE # testing purpose: set TRUE to make [1,1] = 0 and [2,2] = 0
-zerotransform <- TRUE # whether or not to replace 0 with 0.0001. TRUE recommended because 0 are not true 0
+testnonoverlap <- FALSE # testing purpose: set TRUE to make [1,1] = 0 and [2,2] = 0
 set.seed(1999)
-
 
 # varying simulation parameters 
 siminput <- expand_grid(
-  #higher independence, higher ERV expected
-  independence = c(0.2,0.8),
-  #higher ratioA (% directly explained by A linearly), lower ERV expected
-  ratioA = c(0.2,0.5),
+  # higher meanshift, less rank changes occur, lower ERV expected
+  meanshift = c(0.0,2.0),
   # higher auto correlation, lower ERV expected
-  autocorrA = c(0.25,0.75), 
-  #expects no relationship with resample mean (starting value of ER)
-  resample_mean = c(0.5),
-  #higher resample SD, higher ERV expected
-  resample_sd = c(0.15), #c(0.15,0.35),
-  #Number of ER strategies: expects no relationship
-  ERn = c(1),
-  #max of scale: expects no relationship
-  scalemax = c(100)
+  autocorr = c(0.25,0.75), 
+  #  mean ER endorsement: expects no relationship
+  ER_mean = c(0.2,0.3,0.4),
+  # higher within-strategy SD, higher ERV expected
+  ER_withinSD = c(0.14,0.20,0.26), #c(0.15,0.35),
+  # Number of ER strategies: expects no relationship
+  ERn = c(1,2,5),
+  # max of scale: expects no relationship
+  scalemax = c(10,100)
 )
 
 
 # ==================================
 # define functions
 # ==================================
-funsim <- function(autocorrA,ratioA,independence, resample_mean, resample_sd, ERn, scalemax){
-    simOutput <- data.frame(n = n, autocorrA = autocorrA, ratioA = ratioA,
-                          independence=independence,
-                          resample_mean = resample_mean,
-                          resample_sd = resample_sd,
+funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
+    simOutput <- data.frame(n = n, autocorr = autocorr, meanshift = meanshift,
+                          ER_mean = ER_mean,
+                          ER_withinSD = ER_withinSD,
                           ERn = ERn,
                           scalemax = scalemax)
   
   # curve to sample the starting value of ER strategy A[1]
   resample <- function(n){
     # different curves can be set here other than the normal curve
-    return (rnorm(n, mean = resample_mean*scalemax, sd = resample_sd*scalemax))
+    return (rnorm(n, mean = ER_mean*scalemax, sd = ER_withinSD*scalemax))
   } 
     
     
   #---- simulating ER strategies
   
   dfSim <- data.frame(a = 1:n)
-  dfSim$a[1] <- resample(1)
-  for (i in 2:n){
-    dfSim$a[i] <- dfSim$a[i-1]*autocorrA + (1-autocorrA)*resample(1)
-  }
+  # Generate main strategy: by mvrnorm. 
+  # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
+  tmp.r <- matrix(autocorr, n, n)
+  tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
+  tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
+  dfSim$a <- tmp.dist * ER_withinSD*scalemax + ER_mean*scalemax
   
-
   #Create other strategies
   if(ERn>1){
     for (i in 2:ERn){
-      dfSim[letters[i]] <- dfSim$a*ratioA + independence*(1-ratioA)*resample(n) 
+      dfSim[letters[i]] <- scalemax*(   ER_mean + 
+                                          # varies relative to ratings of 1st ER
+                                          (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)*ER_withinSD + 
+                                         # mean shift, random direction per person
+                                         (sign(rnorm(1))*meanshift*ER_withinSD) 
+                                     )
     }
   }
 
@@ -162,17 +170,8 @@ funsim <- function(autocorrA,ratioA,independence, resample_mean, resample_sd, ER
   # Momentary ERV: different measures 
   for (i in 1:n){
     
-    # x <- dfSim[i,]
-    # y <- colMeans(dfSim)
-    # xy <-x + y 
-    # y. <-y / sum(y) 
-    # x. <-x / sum(x) 
-    
     dfNew$edist[i] <- dis_from_moment(mat.euc,i)
     dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i)
-
-    
-    
 
     # **zero row handling**
     # chord, logchord, chisq, hellinger appear to give okay results 
@@ -183,10 +182,8 @@ funsim <- function(autocorrA,ratioA,independence, resample_mean, resample_sd, ER
     
     # chi sq cannot handle blank strategies
     if (ERblankn > 0 & zerotransform==FALSE){
-      #dfNew$chinormed[i] <- NA
       dfNew$chisq[i] <- NA
     }else{
-      #dfNew$chinormed[i] <- dis_from_moment(mat.chisq, i)
       dfNew$chisq[i] <- dis_from_moment(mat.chisq,i)
     }
     
@@ -258,7 +255,7 @@ funsim <- function(autocorrA,ratioA,independence, resample_mean, resample_sd, ER
   if ((ERn+ERblankn)>1){
   tempmodel <- lm (a ~ ., data = dfSim)
   }
-  simOutput$em_autocorrA<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
+  simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
   simOutput$em_cor<- ifelse(ERn > 1,mean(cor(dfSim)[1,2:length(cor(dfSim))^0.5]),NA) #empirical correlation
   simOutput$em_r <- ifelse((ERn+ERblankn) > 1,sqrt(summary(tempmodel)$r.squared),NA)
   simOutput$mean_sd <- mean(dfNew$sd) 
@@ -279,7 +276,7 @@ funsim <- function(autocorrA,ratioA,independence, resample_mean, resample_sd, ER
   simOutput$mean_bray.gra <- mean(dfNew$bray.gra)
   simOutput$multibray.bal <- resBray$beta.BRAY.BAL 
   simOutput$multibray.gra <- resBray$beta.BRAY.GRA 
-  simOutput$multibray <- resBray$beta.BRAY 
+  simOutput$multibray <- resBray$beta.BRAY
   
   return(simOutput)
 
@@ -294,17 +291,17 @@ dis_from_moment <- function(distobj,obs){
 # function to return partial correlations ofdissimlarity measures to the 3 parameters 
 returnfit <- function(measure,dfreturn){
   dftemp <- data.frame(measure = dfreturn[,measure],
-                       autocorrA = dfreturn$autocorrA,
-                       ratioA = dfreturn$ratioA,
-                       # emautocorr = dfreturn$em_autocorrA,
+                       autocorr = dfreturn$autocorr,
+                       meanshift = dfreturn$meanshift,
+                       # emautocorr = dfreturn$em_autocorr,
                        # emcor = dfreturn$em_r,
-                       independence = dfreturn$independence,
-                       resample_mean = dfreturn$resample_mean,
-                       resample_sd = dfreturn$resample_sd,
+                       ER_mean = dfreturn$ER_mean,
+                       ER_withinSD = dfreturn$ER_withinSD,
                        ERn = dfreturn$ERn,
                        scalemax = dfreturn$scalemax)
-  if (is.na(dfreturn[1,measure])){
-    tempfitres <-  (data.frame(NA,NA,NA,NA,NA,NA,NA,NA))
+    dftemp <- Filter(function(x)(length(unique(x))>1), dftemp)
+    if (is.na(dfreturn[1,measure])){
+    tempfitres <-  (data.frame(rep(NA, length(dftemp))))
     }else{
     tempfitres <- (pcor(dftemp)$estimate[1,])
     }
@@ -320,10 +317,9 @@ returnfit <- function(measure,dfreturn){
 
 resOutput <- data.frame()
 for (i in 1:nrow(siminput)){
-  resSim<-rdply(simn,funsim(siminput$autocorrA[i],siminput$ratioA[i],
-                            siminput$independence[i],
-                            siminput$resample_mean[i],
-                            siminput$resample_sd[i],
+  resSim<-rdply(simn,funsim(siminput$autocorr[i],siminput$meanshift[i],
+                            siminput$ER_mean[i],
+                            siminput$ER_withinSD[i],
                             siminput$ERn[i],
                             siminput$scalemax[i]))
   #resSim <- simOutput  
@@ -340,14 +336,19 @@ for (i in 1:nrow(siminput)){
 # ============
 
 
-returninput <- c("multibray","mean_sd","mean_edist", 
-                 "mean_manhattan","mean_hellinger",
+returninput <- c("mean_sd",
+                 "mean_edist", 
+                 "mean_bray",
+                 "multibray",
+                 "mean_hellinger",
                  "mean_jaccard",
+                 "mean_manhattan",
                  "mean_chisq", 
-                 "mean_logchord","mean_chord",
+                 "mean_chord",
+                 "mean_logchord",
                  "mean_kulczynski",
-                 "mean_KLdiv",
-                 "mean_bray")
+                 "mean_KLdiv"
+                 )
 resSummary <- data.frame()
 for (i in 1:length(returninput)){
   if(length(resSummary)==0){
