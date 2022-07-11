@@ -17,21 +17,22 @@ options(scipen=999)
     #E.g., Extra adjustment, say, add ERn and scalemax to denominator of Euclidean distance?
 # 3. Produce data visualizations to see if relationships are linear or not
 # 4. Add RQA
-# 5. Add successive dissimlarity
+# 5. Handle missing rows (in empirical dataset)
 
 #======================
 # simulation setup
 #======================
 
 # study design
-n <- 2 #number of observation (time points per participant)
-simn <- 5 #number of simulations (participant)
+n <- 50 #number of observation (time points per participant)
+simn <- 1 #number of simulations (participant)
 scalemin <- 0
 
 # other settings andtesting conditions
 ERblankn <- 1 # number of "unused" (always 0) ER strategies. Always set >=1 (between-SD needs at least 2 to calculate)
 zerotransform <- TRUE # whether or not to replace 0 with 0.0001. TRUE recommended because 0 are not true 0
 rounding <- TRUE # whether or not round scores to integers
+successivecomp <- TRUE # is successive comparisons made? (one-to-many is in by default)
 firstrowzero <- FALSE # testing purpose: set TRUE to force first row to be all 0
 testnonoverlap <- FALSE # testing purpose: set TRUE to make [1,1] = 0 and [2,2] = 0
 set.seed(1999)
@@ -62,13 +63,6 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
                           ER_withinSD = ER_withinSD,
                           ERn = ERn,
                           scalemax = scalemax)
-  
-  # curve to sample the starting value of ER strategy A[1]
-  resample <- function(n){
-    # different curves can be set here other than the normal curve
-    return (rnorm(n, mean = ER_mean*scalemax, sd = ER_withinSD*scalemax))
-  } 
-    
     
   #---- simulating ER strategies
   
@@ -165,43 +159,80 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   mat.jaccard <- vegdist(dfSim,method="jaccard")
   mat.kulczynski <- vegdist(dfSim,method="kulczynski")
   mat.bray <- vegdist(dfSim,method="bray")
+  resbraypart <- bray.part(dfSim)
   
   
   # Momentary ERV: different measures 
   for (i in 1:n){
     
-    dfNew$edist[i] <- dis_from_moment(mat.euc,i)
-    dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i)
+    if (successivecomp & i>1){
+      suc.edist <- as.matrix(mat.euc)[i,i-1]
+      suc.manhattan <- as.matrix(mat.manhattan)[i,i-1]
+      suc.chord <- as.matrix(mat.chord)[i,i-1]
+      suc.chisq <- as.matrix(mat.chisq)[i,i-1]
+      suc.logchord <- as.matrix(mat.logchord)[i,i-1]
+      suc.hel <- as.matrix(mat.hel)[i,i-1]
+      suc.jaccard <- as.matrix(mat.jaccard)[i,i-1]
+      suc.kulczynski <- as.matrix(mat.kulczynski)[i,i-1]
+      suc.brayveg <- as.matrix(mat.bray)[i,i-1]
+      suc.bray <- as.matrix(resbraypart$bray)[i,i-1]
+      suc.bray.bal <- as.matrix(resbraypart$bray.bal)[i,i-1]
+      suc.bray.gra <- as.matrix(resbraypart$bray.gra)[i,i-1]
+    }else{
+      suc.edist <- 0
+      suc.manhattan <- 0
+      suc.chord <- 0
+      suc.chisq <- 0
+      suc.logchord <- 0
+      suc.hel <- 0
+      suc.jaccard <- 0
+      suc.kulczynski <- 0
+      suc.brayveg <- 0
+      suc.bray <- 0
+      suc.bray.bal <- 0
+      suc.bray.gra <- 0
+  
+          }
+    
+    dfNew$edist[i] <- dis_from_moment(mat.euc,i) + suc.edist
+    dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i) + suc.manhattan
 
     # **zero row handling**
     # chord, logchord, chisq, hellinger appear to give okay results 
     # when 0 are replaced by 0.0001
     
-    dfNew$chordnormed[i] <- dis_from_moment(mat.chord,i)
-    dfNew$logchord[i] <- dis_from_moment(mat.logchord,i)
+    dfNew$logchord[i] <- dis_from_moment(mat.logchord,i) + suc.logchord
     
     # chi sq cannot handle blank strategies
     if (ERblankn > 0 & zerotransform==FALSE){
       dfNew$chisq[i] <- NA
     }else{
-      dfNew$chisq[i] <- dis_from_moment(mat.chisq,i)
+      dfNew$chisq[i] <- dis_from_moment(mat.chisq,i) + suc.chisq
     }
     
 
-    dfNew$hellinger[i] <- dis_from_moment(mat.hel,i) 
-    dfNew$chord[i] <- dis_from_moment(mat.chord,i)
+    dfNew$hellinger[i] <- dis_from_moment(mat.hel,i) + suc.hel
+    dfNew$chord[i] <- dis_from_moment(mat.chord,i) + suc.chord
 
     # **zero row handling**
     #jaccard & bray approaches 1 when all elements in a row approaches 0
     #kulczynski approaches 0.5 when all elements in a row approaches 0
     
-    dfNew$jaccard[i] <- dis_from_moment(mat.jaccard,i)
-    dfNew$kulczynski[i] <- dis_from_moment(mat.kulczynski,i)
-    dfNew$brayveg[i] <- dis_from_moment(mat.bray,i)
+    dfNew$jaccard[i] <- dis_from_moment(mat.jaccard,i) + suc.jaccard
+    dfNew$kulczynski[i] <- dis_from_moment(mat.kulczynski,i) + suc.kulczynski
+    dfNew$brayveg[i] <- dis_from_moment(mat.bray,i) + suc.brayveg
     
     # KL Divergence
     
     dfNew$KLdiv[i] <- dis_from_moment(mat.KLdiv,i)
+    
+    # Momentary Bray-Curtis dissimilarity by beta.part
+    # there appears to be some limitation on the bray.part on handling 1 ER stgy only
+    # will throw 0 and warning message if there is only 1 ER stgy
+    dfNew$bray[i] <- dis_from_moment(resbraypart$bray,i) + suc.bray
+    dfNew$bray.bal[i] <- dis_from_moment(resbraypart$bray.bal,i) + suc.bray.bal
+    dfNew$bray.gra[i] <- dis_from_moment(resbraypart$bray.gra,i) + suc.bray.gra
+    
     
     # the below are old lines: distance between moment and mean 
     #   is different from mean distance of the moment to all other moments
@@ -219,37 +250,21 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
     #dfNew$chisq[i] <- vegdist(rbind(x,y),method="chisq")[1]
     #dfNew$kulczynski[i] <- vegdist(rbind(x,y),method="kulczynski")[1]
     #dfNew$brayveg[i] <- vegdist(rbind(x,y),method="bray")[1]
-    
+    #resbraypart <- bray.part(rbind(dfSim[i,],base::lapply(dfSim[,],FUN = mean)))
+    #dfNew$bray[i] <- resbraypart$bray[1]
+    #dfNew$bray.bal[i] <- resbraypart$bray.bal[1]
+    #dfNew$bray.gra[i] <- resbraypart$bray.gra[1]
+
   }
-  
-  # Momentary Bray-Curtis dissimilarity by beta.part
-  
-  resbraypart <- tempres <- bray.part(dfSim)
-  
-  if ((ERn+ERblankn) > 0){
-      # there appears to be some limitation on the bray.part on handling 1 ER stgy only
-      # will throw 0 and warning message if there is only 1 ER stgy
-      for (i in 1:n){
-      dfNew$bray[i] <- dis_from_moment(resbraypart$bray,i)
-      dfNew$bray.bal[i] <- dis_from_moment(resbraypart$bray.bal,i)
-      dfNew$bray.gra[i] <- dis_from_moment(resbraypart$bray.gra,i)
-      #old codes that compares moment with mean values
-      #resbraypart <- bray.part(rbind(dfSim[i,],base::lapply(dfSim[,],FUN = mean)))
-      #dfNew$bray[i] <- resbraypart$bray[1]
-      #dfNew$bray.bal[i] <- resbraypart$bray.bal[1]
-      #dfNew$bray.gra[i] <- resbraypart$bray.gra[1]
-      }
-  }else{
-    dfNew$bray<-0
-    dfNew$bray.bal<-0
-    dfNew$bray.gra<-0
-  }
-  
-  
   
   # Multi-site Bray-Curtis dissimilarity
   resBray<- beta.multi.abund(dfSim)
   
+  if (successivecomp){
+    istart <- 2
+  }else{
+    istart <- 1
+  }
   
   #---- simOutput
   if ((ERn+ERblankn)>1){
@@ -258,22 +273,21 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
   simOutput$em_cor<- ifelse(ERn > 1,mean(cor(dfSim)[1,2:length(cor(dfSim))^0.5]),NA) #empirical correlation
   simOutput$em_r <- ifelse((ERn+ERblankn) > 1,sqrt(summary(tempmodel)$r.squared),NA)
-  simOutput$mean_sd <- mean(dfNew$sd) 
-  simOutput$mean_edist <- mean(dfNew$edist) 
-  simOutput$mean_manhattan <- mean(dfNew$manhattan)
+  simOutput$mean_sd <- mean(dfNew$sd[istart:n]) 
+  simOutput$mean_edist <- mean(dfNew$edist[istart:n]) 
+  simOutput$mean_manhattan <- mean(dfNew$manhattan[istart:n])
   #simOutput$mean_chinormed <- mean(dfNew$chinormed)
-  simOutput$mean_hellinger <- mean(dfNew$hellinger)
-  simOutput$mean_jaccard <- mean(dfNew$jaccard)
-  simOutput$mean_chisq <- mean(dfNew$chisq) 
-  simOutput$mean_logchord <- mean(dfNew$logchord) 
-  simOutput$mean_chord <- mean(dfNew$chord)
-  #simOutput$mean_chordnormed <- mean(dfNew$chordnormed)
-  simOutput$mean_kulczynski <- mean(dfNew$kulczynski)
-  simOutput$mean_KLdiv <- mean(dfNew$KLdiv)
-  simOutput$mean_brayveg <- mean(dfNew$brayveg)
-  simOutput$mean_bray <- mean(dfNew$bray) 
-  simOutput$mean_bray.bal <- mean(dfNew$bray.bal)
-  simOutput$mean_bray.gra <- mean(dfNew$bray.gra)
+  simOutput$mean_hellinger <- mean(dfNew$hellinger[istart:n])
+  simOutput$mean_jaccard <- mean(dfNew$jaccard[istart:n])
+  simOutput$mean_chisq <- mean(dfNew$chisq[istart:n]) 
+  simOutput$mean_logchord <- mean(dfNew$logchord[istart:n]) 
+  simOutput$mean_chord <- mean(dfNew$chord[istart:n])
+  simOutput$mean_kulczynski <- mean(dfNew$kulczynski[istart:n])
+  simOutput$mean_KLdiv <- mean(dfNew$KLdiv[istart:n])
+  simOutput$mean_brayveg <- mean(dfNew$brayveg[istart:n])
+  simOutput$mean_bray <- mean(dfNew$bray[istart:n]) 
+  simOutput$mean_bray.bal <- mean(dfNew$bray.bal[istart:n])
+  simOutput$mean_bray.gra <- mean(dfNew$bray.gra[istart:n])
   simOutput$multibray.bal <- resBray$beta.BRAY.BAL 
   simOutput$multibray.gra <- resBray$beta.BRAY.GRA 
   simOutput$multibray <- resBray$beta.BRAY
