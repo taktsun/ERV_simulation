@@ -37,12 +37,12 @@ firstrowzero <- FALSE # testing purpose: set TRUE to force first row to be all 0
 testnonoverlap <- FALSE # testing purpose: set TRUE to make [1,1] = 0 and [2,2] = 0
 set.seed(1999)
 
-# varying simulation parameters 
-siminput <- expand_grid(
+# varying simulation parameters
+siminput <- expand.grid(
   # higher meanshift, less rank changes occur, lower ERV expected
   meanshift = c(0.0,2.0),
   # higher auto correlation, lower ERV expected
-  autocorr = c(0.25,0.75), 
+  autocorr = c(0.25,0.75),
   #  mean ER endorsement: expects no relationship
   ER_mean = c(0.2,0.3,0.4),
   # higher within-strategy SD, higher ERV expected
@@ -63,25 +63,25 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
                           ER_withinSD = ER_withinSD,
                           ERn = ERn,
                           scalemax = scalemax)
-    
+
   #---- simulating ER strategies
-  
+
   dfSim <- data.frame(a = 1:n)
-  # Generate main strategy: by mvrnorm. 
+  # Generate main strategy: by mvrnorm.
   # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
   tmp.r <- matrix(autocorr, n, n)
   tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
   tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
   dfSim$a <- tmp.dist * ER_withinSD*scalemax + ER_mean*scalemax
-  
+
   #Create other strategies
   if(ERn>1){
     for (i in 2:ERn){
-      dfSim[letters[i]] <- scalemax*(   ER_mean + 
+      dfSim[letters[i]] <- scalemax*(   ER_mean +
                                           # varies relative to ratings of 1st ER
-                                          (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)*ER_withinSD + 
+                                          (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)*ER_withinSD +
                                          # mean shift, random direction per person
-                                         (sign(rnorm(1))*meanshift*ER_withinSD) 
+                                         (sign(rnorm(1))*meanshift*ER_withinSD)
                                      )
     }
   }
@@ -92,40 +92,46 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
       dfSim[letters[i]] <- 0
     }
   }
-  
+
   #limit the timeseries to min/max
+  # CJ: Probably remove this, because it relates to measurement
+  # CJ: But in general, boolean indexing is faster than ifelse()
   dfSim[] <- apply(dfSim, 2, function(x) ifelse(x < scalemin , scalemin, x))
   dfSim[] <- apply(dfSim, 2, function(x) ifelse(x > scalemax , scalemax, x))
-  
+
   # testing purpose: first row to zero
   if(firstrowzero){
     dfSim[1,] <- 0
   }
-  
+
   # testing purpose: non overlapping ER strategy use
   if(testnonoverlap & ((ERn+ERblankn)>1)){
     dfSim[1,1] <- 0
     dfSim[2,2] <- 0
   }
-  
+
   # rounding
+  # CJ: This relates to measurement, so remove for now
   if(rounding){
     dfSim[] <- round(dfSim,0)
   }
-    
+
   # replace 0 with 0.0001 because 0 are not true zero (interval scale not ratio scale)
+  # CJ: This problem will probably go away if you're no longer rounding
+  # CJ: Instead of adding a small constant here, you can either:
+  # CJ: Create a wrapper for your metric functions that adds a small constant if necessary, OR create a wrapper that returns NA if the calculation fails
   if (zerotransform){
   dfSim[dfSim == 0] <- 0.0001
   }
-  
+
   #---- ER Variability candidate indices
-  
+
   dfNew <- dfSim
-  
+
   # Momentary SD
   dfNew$sd <- base::apply(dfSim,1,FUN = sd)
-  
-  
+
+
   # standardize
   dfnorm_chord <- decostand(dfSim,"norm")
   dfnorm_logchord <- decostand(log1p(dfSim),"norm")
@@ -134,9 +140,9 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   if (ERblankn == 0  | zerotransform == TRUE){
     dfnorm_chi <- decostand(dfSim,"chi.square")
   }
-  
-  # KL divergence 
-  
+
+  # KL divergence
+
   tempdist <- c()
   for (k in 1:(nrow(dfnorm_prob)-1)){
     for (j in (k+1):nrow(dfnorm_prob)){
@@ -147,9 +153,9 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   mat.KLdiv <- matrix(0, nrow = nrow(dfnorm_prob), ncol = nrow(dfnorm_prob))
   mat.KLdiv[lower.tri(mat.KLdiv, diag = FALSE)] <- tempdist
   mat.KLdiv[upper.tri(mat.KLdiv)] <- t(mat.KLdiv)[upper.tri(mat.KLdiv)]
-  
+
   # Other matrices
-  
+
   mat.euc <- dist(dfSim)
   mat.manhattan <- vegdist(dfSim,method = "manhattan")
   mat.chord <- vegdist(dfnorm_chord, method = "euc") # or vegdist(dfSim,method="chord")
@@ -160,11 +166,11 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   mat.kulczynski <- vegdist(dfSim,method="kulczynski")
   mat.bray <- vegdist(dfSim,method="bray")
   resbraypart <- bray.part(dfSim)
-  
-  
-  # Momentary ERV: different measures 
+
+
+  # Momentary ERV: different measures
   for (i in 1:n){
-    
+
     if (successivecomp & i>1){
       suc.edist <- as.matrix(mat.euc)[i,i-1]
       suc.manhattan <- as.matrix(mat.manhattan)[i,i-1]
@@ -191,25 +197,25 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
       suc.bray <- 0
       suc.bray.bal <- 0
       suc.bray.gra <- 0
-  
+
           }
-    
+
     dfNew$edist[i] <- dis_from_moment(mat.euc,i) + suc.edist
     dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i) + suc.manhattan
 
     # **zero row handling**
-    # chord, logchord, chisq, hellinger appear to give okay results 
+    # chord, logchord, chisq, hellinger appear to give okay results
     # when 0 are replaced by 0.0001
-    
+
     dfNew$logchord[i] <- dis_from_moment(mat.logchord,i) + suc.logchord
-    
+
     # chi sq cannot handle blank strategies
     if (ERblankn > 0 & zerotransform==FALSE){
       dfNew$chisq[i] <- NA
     }else{
       dfNew$chisq[i] <- dis_from_moment(mat.chisq,i) + suc.chisq
     }
-    
+
 
     dfNew$hellinger[i] <- dis_from_moment(mat.hel,i) + suc.hel
     dfNew$chord[i] <- dis_from_moment(mat.chord,i) + suc.chord
@@ -217,24 +223,24 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
     # **zero row handling**
     #jaccard & bray approaches 1 when all elements in a row approaches 0
     #kulczynski approaches 0.5 when all elements in a row approaches 0
-    
+
     dfNew$jaccard[i] <- dis_from_moment(mat.jaccard,i) + suc.jaccard
     dfNew$kulczynski[i] <- dis_from_moment(mat.kulczynski,i) + suc.kulczynski
     dfNew$brayveg[i] <- dis_from_moment(mat.bray,i) + suc.brayveg
-    
+
     # KL Divergence
-    
+
     dfNew$KLdiv[i] <- dis_from_moment(mat.KLdiv,i)
-    
+
     # Momentary Bray-Curtis dissimilarity by beta.part
     # there appears to be some limitation on the bray.part on handling 1 ER stgy only
     # will throw 0 and warning message if there is only 1 ER stgy
     dfNew$bray[i] <- dis_from_moment(resbraypart$bray,i) + suc.bray
     dfNew$bray.bal[i] <- dis_from_moment(resbraypart$bray.bal,i) + suc.bray.bal
     dfNew$bray.gra[i] <- dis_from_moment(resbraypart$bray.gra,i) + suc.bray.gra
-    
-    
-    # the below are old lines: distance between moment and mean 
+
+
+    # the below are old lines: distance between moment and mean
     #   is different from mean distance of the moment to all other moments
     #   might be needed to handle the complimentary zero problem (0,1,0) vs (1,0,1)
 
@@ -244,7 +250,7 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
     #dfNew$logchordnormed[i] <- vegdist(rbind(dfnorm_logchord[i,],colMeans(dfnorm_logchord)),"euc")
     #dfNew$chinormed[i] <- vegdist(rbind(dfnorm_chi[i,],colMeans(dfnorm_chi)),"euc")
     #dfNew$hellinger[i] <- sqrt(1/2 * sum(sqrt(x) -sqrt(y))^2)
-    #dfNew$hellingernormed[i] <- vegdist(rbind(dfnorm_hel[i,],colMeans(dfnorm_hel)),"euc") 
+    #dfNew$hellingernormed[i] <- vegdist(rbind(dfnorm_hel[i,],colMeans(dfnorm_hel)),"euc")
     #dfNew$chord[i] <- vegdist(rbind(x,y),method="chord")[1]
     #dfNew$jaccard[i] <- vegdist(rbind(x,y),method="jaccard")[1]
     #dfNew$chisq[i] <- vegdist(rbind(x,y),method="chisq")[1]
@@ -256,16 +262,16 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
     #dfNew$bray.gra[i] <- resbraypart$bray.gra[1]
 
   }
-  
+
   # Multi-site Bray-Curtis dissimilarity
   resBray<- beta.multi.abund(dfSim)
-  
+
   if (successivecomp){
     istart <- 2
   }else{
     istart <- 1
   }
-  
+
   #---- simOutput
   if ((ERn+ERblankn)>1){
   tempmodel <- lm (a ~ ., data = dfSim)
@@ -273,25 +279,25 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
   simOutput$em_cor<- ifelse(ERn > 1,mean(cor(dfSim)[1,2:length(cor(dfSim))^0.5]),NA) #empirical correlation
   simOutput$em_r <- ifelse((ERn+ERblankn) > 1,sqrt(summary(tempmodel)$r.squared),NA)
-  simOutput$mean_sd <- mean(dfNew$sd[istart:n]) 
-  simOutput$mean_edist <- mean(dfNew$edist[istart:n]) 
+  simOutput$mean_sd <- mean(dfNew$sd[istart:n])
+  simOutput$mean_edist <- mean(dfNew$edist[istart:n])
   simOutput$mean_manhattan <- mean(dfNew$manhattan[istart:n])
   #simOutput$mean_chinormed <- mean(dfNew$chinormed)
   simOutput$mean_hellinger <- mean(dfNew$hellinger[istart:n])
   simOutput$mean_jaccard <- mean(dfNew$jaccard[istart:n])
-  simOutput$mean_chisq <- mean(dfNew$chisq[istart:n]) 
-  simOutput$mean_logchord <- mean(dfNew$logchord[istart:n]) 
+  simOutput$mean_chisq <- mean(dfNew$chisq[istart:n])
+  simOutput$mean_logchord <- mean(dfNew$logchord[istart:n])
   simOutput$mean_chord <- mean(dfNew$chord[istart:n])
   simOutput$mean_kulczynski <- mean(dfNew$kulczynski[istart:n])
   simOutput$mean_KLdiv <- mean(dfNew$KLdiv[istart:n])
   simOutput$mean_brayveg <- mean(dfNew$brayveg[istart:n])
-  simOutput$mean_bray <- mean(dfNew$bray[istart:n]) 
+  simOutput$mean_bray <- mean(dfNew$bray[istart:n])
   simOutput$mean_bray.bal <- mean(dfNew$bray.bal[istart:n])
   simOutput$mean_bray.gra <- mean(dfNew$bray.gra[istart:n])
-  simOutput$multibray.bal <- resBray$beta.BRAY.BAL 
-  simOutput$multibray.gra <- resBray$beta.BRAY.GRA 
+  simOutput$multibray.bal <- resBray$beta.BRAY.BAL
+  simOutput$multibray.gra <- resBray$beta.BRAY.GRA
   simOutput$multibray <- resBray$beta.BRAY
-  
+
   return(simOutput)
 
 }
@@ -302,7 +308,7 @@ dis_from_moment <- function(distobj,obs){
   return (mean(as.matrix(distobj)[obs,])*nobs/(nobs-1))
 }
 
-# function to return partial correlations ofdissimlarity measures to the 3 parameters 
+# function to return partial correlations ofdissimlarity measures to the 3 parameters
 returnfit <- function(measure,dfreturn){
   dftemp <- data.frame(measure = dfreturn[,measure],
                        autocorr = dfreturn$autocorr,
@@ -336,7 +342,7 @@ for (i in 1:nrow(siminput)){
                             siminput$ER_withinSD[i],
                             siminput$ERn[i],
                             siminput$scalemax[i]))
-  #resSim <- simOutput  
+  #resSim <- simOutput
   if(length(resOutput)==0){
       resOutput <- resSim
     }else{
@@ -351,13 +357,13 @@ for (i in 1:nrow(siminput)){
 
 
 returninput <- c("mean_sd",
-                 "mean_edist", 
+                 "mean_edist",
                  "mean_bray",
                  "multibray",
                  "mean_hellinger",
                  "mean_jaccard",
                  "mean_manhattan",
-                 "mean_chisq", 
+                 "mean_chisq",
                  "mean_chord",
                  "mean_logchord",
                  "mean_kulczynski",
