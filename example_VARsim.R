@@ -1,65 +1,66 @@
-library(tsDyn) # package for VAR.sim
 library("pbapply") # percentage bar for replicate function
-
-autocorr <- 0.8
-correlation <- 0.5
+library(tsDyn) # package for VAR.sim
 withinSD <- 1
 crosslag <- 0 # assumes zero cross-lag relationships for now
+obs <- 100 # not sure why obs = 2 is not working
+nrep <- 500
 nvar <- 2 # number of variables (ER strategies) to generate
-
-# 2-strategy testing
-
-# test2stgy <- function(){
-# var1 <- VAR.sim(B=B1, n=100, include="none",varcov=CV)
-# resact <- acf(var1, plot = FALSE)
-# tmp <- list(resact$acf[2,1,1],resact$acf[2,2,2],cor(var1)[2,1])
-# return(tmp)
-# }
-#
-# CV<-matrix(c(1,correlation,correlation,1),2)
-# B1<-matrix(c(autocorr, 0.0, 0.0, autocorr), 2)
-# testres<-pbreplicate(500,test2stgy())
-# #mean of autocorrelation of 1st variable, autocorrelation of 2nd variable, and correlation between 2
-# apply((apply(testres,1,unlist)),2,mean)
-# #SD of autocorrelation of 1st variable, autocorrelation of 2nd variable, and correlation between 2
-# apply((apply(testres,1,unlist)),2,sd)
-#
-
-# n-strategy testing
-
+autocorr <- 0
+correlation <- -0.7
 
 CV <- diag(withinSD, nvar,nvar)
 CV[CV == 0] <- correlation
-
 B1 <- diag(autocorr, nvar,nvar)
 B1[B1 == 0] <- crosslag
 
-CV
-B1
 
 testnstgy <- function(){
-  var1 <- VAR.sim(B=B1, n=100, include="none",varcov=CV)
+  var1 <- VAR.sim(B=B1, n=obs, include="none",varcov=CV)
+  # # plot scatterplots with x=y line to see how observations are distributed
+  # plot(var1)
+  # abline(a=0, b=1)
   resact <- acf(var1, plot = FALSE)
-  tmp <- list(resact$acf,cor(var1),apply(var1,2,sd))
+  tmp <- list(resact$acf, # AR estimation
+              cor(var1), #correlation matrix
+              apply(var1,2,sd), # within-variable SD
+              sum(var1[,1]>var1[,2])/obs, # % S1>S2
+              abs(diff(as.numeric(var1[,1]>var1[,2])))/obs # % rank change over obs
+              )
   return(tmp)
 }
 
-testres <- pbreplicate(500,testnstgy())
+testres <- pbreplicate(nrep,testnstgy())
 acfmean <- apply(simplify2array(testres[1,]),1:3,mean)
 acfsd <- apply(simplify2array(testres[1,]),1:3,sd)
 extractAR1 <- function(matinput){
   outlist<- NULL
+  if (nrow(matinput) >1){
   for (i in 1:nvar){
-    outlist<- append(outlist, matinput[2,i,i])
+      outlist<- append(outlist, matinput[2,i,i])
+  }
+  }else{
+    # when obs is too low acf returns only 1 row of estimation
+  outlist<- append(outlist, "obs is too low, no acf AR(1) estimates")
   }
   return(outlist)
 }
-#  AR(1) mean and SD
-extractAR1(acfmean)
-extractAR1(acfsd)
-# mean correlation matrix
-apply(simplify2array(testres[2,]), 1:2, mean)
-apply(simplify2array(testres[2,]), 1:2, sd)
-# mean within-variable ("within-strategy") SD
-apply((do.call("rbind",testres[3,])),2,mean)
 
+funoutput <- function(){
+#  AR(1) mean and SD
+print(paste0("AR(1) mean and SD; input autocorrelation = ",autocorr))
+print(extractAR1(acfmean))
+print(extractAR1(acfsd))
+# Correlation matrix: Mean
+print(paste0("Correlation matrix: Mean & SD; input correlation = ",correlation))
+print(apply(simplify2array(testres[2,]), 1:2, mean))
+# Correlation matrix: SD
+print(apply(simplify2array(testres[2,]), 1:2, sd))
+# mean within-variable ("within-strategy") SD
+print("Within-variable  SD")
+print(apply((do.call("rbind",testres[3,])),2,mean))
+# mean % of S1>S2
+paste0("% Var1>Var2: [mean] ",mean(unlist(testres[4,])))
+# mean  % of rank change
+paste0("% Rank Change: [mean] ",mean(unlist(testres[5,])), " [SD] ",sd(unlist(testres[5,])))
+}
+funoutput()
