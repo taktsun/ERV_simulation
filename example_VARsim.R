@@ -1,10 +1,11 @@
 library(tsDyn) # package for VAR.sim
 library("pbapply") # percentage bar for replicate function
 
-autocorr <- 0.2
+autocorr <- 0.8
 correlation <- 0.5
+withinSD <- 1
 crosslag <- 0 # assumes zero cross-lag relationships for now
-nvar <- 4 # number of variables (ER strategies) to generate
+nvar <- 2 # number of variables (ER strategies) to generate
 
 # 2-strategy testing
 
@@ -27,16 +28,19 @@ nvar <- 4 # number of variables (ER strategies) to generate
 # n-strategy testing
 
 
-CV <- diag(1, nvar,nvar)
+CV <- diag(withinSD, nvar,nvar)
 CV[CV == 0] <- correlation
 
 B1 <- diag(autocorr, nvar,nvar)
 B1[B1 == 0] <- crosslag
 
+CV
+B1
+
 testnstgy <- function(){
   var1 <- VAR.sim(B=B1, n=100, include="none",varcov=CV)
   resact <- acf(var1, plot = FALSE)
-  tmp <- list(resact$acf,cor(var1))
+  tmp <- list(resact$acf,cor(var1),apply(var1,2,sd))
   return(tmp)
 }
 
@@ -56,4 +60,6 @@ extractAR1(acfsd)
 # mean correlation matrix
 apply(simplify2array(testres[2,]), 1:2, mean)
 apply(simplify2array(testres[2,]), 1:2, sd)
+# mean within-variable ("within-strategy") SD
+apply((do.call("rbind",testres[3,])),2,mean)
 
