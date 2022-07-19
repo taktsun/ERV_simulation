@@ -92,13 +92,12 @@ funsim <- function(i.siminput){
     signvector <- rep(signvector, each = n)
 
     if (ERn >1){
-      dfSim <- data.frame(VAR.sim(B=B1, n=n, include="none",varcov=CV))
+      dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
     }else{
       # VAR.sim must create multivariate time series;
       # cut back to 1 col
-      dfSim <- data.frame(VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
+      dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
     }
-    colnames(dfSim) <- letters[1:ERn]
 
     # apply meanshift adjustment
     dfSim <- dfSim + signvector*meanshift
@@ -131,16 +130,19 @@ funsim <- function(i.siminput){
 
   #Create "blank" strategies
   if(ERblankn>0){
-    for (i in (ERn+1):(ERn+ERblankn)){
-      dfSim[letters[i]] <- 0
-    }
+    dfSim<- cbind(dfSim,matrix(0,n,ERblankn,dimnames = list(1:n,letters[(ERn+1):(ERn+ERblankn)])))
+    # for (i in (ERn+1):(ERn+ERblankn)){
+    #   dfSim[letters[i]] <- 0
+    # }
   }
+  colnames(dfSim) <- letters[1:(ERn+ERblankn)]
+
 
   #limit the timeseries to min/max
   # CJ: Probably remove this, because it relates to measurement
   # CJ: But in general, boolean indexing is faster than ifelse()
-  dfSim[] <- apply(dfSim, 2, function(x) ifelse(x < scalemin , scalemin, x))
-  dfSim[] <- apply(dfSim, 2, function(x) ifelse(x > scalemax , scalemax, x))
+  dfSim <- apply(dfSim, 2, function(x) ifelse(x < scalemin , scalemin, x))
+  dfSim <- apply(dfSim, 2, function(x) ifelse(x > scalemax , scalemax, x))
 
   # testing purpose: first row to zero
   if(firstrowzero){
@@ -166,6 +168,7 @@ funsim <- function(i.siminput){
   if (zerotransform){
   dfSim[dfSim == 0] <- 0.0001
   }
+
   return(dfSim)
 }
 
@@ -322,7 +325,7 @@ funcal <- function(i.siminput,dfSim){
   #---- simOutput
   #empirical auto correlation
   simOutput <- data.frame(em_autocorr = NA)
-  simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2]
+  simOutput$em_autocorr<-acf(dfSim[,"a"], plot = FALSE)$acf[2]
   #has to exclude the blank column otherwise cor throws error
   simOutput$em_cor<- tryCatch(mean(cor(dfSim[1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA)
   simOutput$em_r <- tryCatch(sqrt(summary(lm(a ~ ., data = dfSim))$r.squared), error=function(err) NA)
@@ -390,7 +393,6 @@ returnfit <- function(measure,dfreturn){
 resOutput <- data.frame()
 for (i in 1:nrow(siminput)){
   resSim<-rdply(simn,simulatecalculate(i))
-  #resSim <- simOutput
   if(length(resOutput)==0){
       resOutput <- resSim
     }else{
@@ -398,6 +400,7 @@ for (i in 1:nrow(siminput)){
   }
 }
 
+#bind the simulation parameters to result
 resInfo <- siminput[rep(seq_len(nrow(siminput)), each = simn), ]
 resOutput <- cbind(resInfo,resOutput)
 # ============
