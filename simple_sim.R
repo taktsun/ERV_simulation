@@ -3,7 +3,7 @@ library(plyr)
 library(ppcor)
 library(vegan)
 library(entropy)
-library(faux) #doesn't need it anymore if not using mvrnorm
+# library(faux) #doesn't need it anymore if not using mvrnorm
 library(tsDyn) # package for VAR.sim
 
 options(scipen=999)
@@ -24,8 +24,8 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 10 #number of observation (time points per participant)
-simn <- 2 #number of simulations (participant)
+n <- 5 #number of observation (time points per participant)
+simn <- 1 #number of simulations (participant)
 scalemin <- 0
 
 # other settings and testing conditions
@@ -59,14 +59,15 @@ siminput <- expand.grid(
 # ==================================
 # define functions
 # ==================================
-funsim <- function(autocorr,meanshift, correlation, ER_mean, ER_withinSD, ERn, scalemax){
-    simOutput <- data.frame(n = n, autocorr = autocorr,
-                            meanshift = meanshift,
-                            correlation = correlation,
-                            ER_mean = ER_mean,
-                          ER_withinSD = ER_withinSD,
-                          ERn = ERn,
-                          scalemax = scalemax)
+funsim <- function(i.siminput){
+    autocorr = siminput$autocorr[i.siminput]
+    meanshift = siminput$meanshift[i.siminput]
+    correlation = siminput$correlation[i.siminput]
+    ER_mean = siminput$ER_mean[i.siminput]
+    ER_withinSD = siminput$ER_withinSD[i.siminput]
+    ERn = siminput$ERn[i.siminput]
+    scalemax = siminput$scalemax[i.siminput]
+
 
   #---- simulating ER strategies
     # Using the VAR.sim method...
@@ -100,7 +101,6 @@ funsim <- function(autocorr,meanshift, correlation, ER_mean, ER_withinSD, ERn, s
     colnames(dfSim) <- letters[1:ERn]
 
     # apply meanshift adjustment
-    dfOri <- dfSim
     dfSim <- dfSim + signvector*meanshift
     # Scale up to within-strategy SD and ER mean endorsement
     dfSim <- dfSim*ER_withinSD*scalemax
@@ -155,9 +155,9 @@ funsim <- function(autocorr,meanshift, correlation, ER_mean, ER_withinSD, ERn, s
 
   # rounding
   # CJ: This relates to measurement, so remove for now
-  if(rounding){
-    dfSim[] <- round(dfSim,0)
-  }
+  # if(rounding){
+  #   dfSim[] <- round(dfSim,0)
+  # }
 
   # replace 0 with 0.0001 because 0 are not true zero (interval scale not ratio scale)
   # CJ: This problem will probably go away if you're no longer rounding
@@ -166,6 +166,17 @@ funsim <- function(autocorr,meanshift, correlation, ER_mean, ER_withinSD, ERn, s
   if (zerotransform){
   dfSim[dfSim == 0] <- 0.0001
   }
+  return(dfSim)
+}
+
+funcal <- function(i.siminput,dfSim){
+  simOutput <- data.frame(n = n, autocorr = siminput$autocorr[i.siminput],
+                          meanshift = siminput$meanshift[i.siminput],
+                          correlation = siminput$correlation[i.siminput],
+                          ER_mean = siminput$ER_mean[i.siminput],
+                          ER_withinSD = siminput$ER_withinSD[i.siminput],
+                          ERn = siminput$ERn[i.siminput],
+                          scalemax = siminput$scalemax[i.siminput])
 
   #---- ER Variability candidate indices
 
@@ -316,12 +327,10 @@ funsim <- function(autocorr,meanshift, correlation, ER_mean, ER_withinSD, ERn, s
   }
 
   #---- simOutput
-  if ((ERn+ERblankn)>1){
-  tempmodel <- lm (a ~ ., data = dfSim)
-  }
+
   simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
-  simOutput$em_cor<- ifelse(ERn > 1,mean(cor(dfSim)[1,2:length(cor(dfSim))^0.5]),NA) #empirical correlation
-  simOutput$em_r <- ifelse((ERn+ERblankn) > 1,sqrt(summary(tempmodel)$r.squared),NA)
+  simOutput$em_cor<- tryCatch(mean(cor(dfSim[1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA)
+  simOutput$em_r <- tryCatch(sqrt(summary(lm(a ~ ., data = dfSim))$r.squared), error=function(err) NA)
   simOutput$mean_sd <- mean(dfNew$sd[istart:n])
   simOutput$mean_edist <- mean(dfNew$edist[istart:n])
   simOutput$mean_manhattan <- mean(dfNew$manhattan[istart:n])
@@ -343,6 +352,10 @@ funsim <- function(autocorr,meanshift, correlation, ER_mean, ER_withinSD, ERn, s
 
   return(simOutput)
 
+}
+
+simulatecalculate <- function(i.siminput){
+  return (funcal(i.siminput,funsim(i.siminput)))
 }
 
 #function to calculate the mean dissimilarity from one obs to all other obs, input dist
@@ -381,13 +394,7 @@ returnfit <- function(measure,dfreturn){
 
 resOutput <- data.frame()
 for (i in 1:nrow(siminput)){
-  resSim<-rdply(simn,funsim(siminput$autocorr[i],
-                            siminput$meanshift[i],
-                            siminput$correlation[i],
-                            siminput$ER_mean[i],
-                            siminput$ER_withinSD[i],
-                            siminput$ERn[i],
-                            siminput$scalemax[i]))
+  resSim<-rdply(simn,simulatecalculate(i))
   #resSim <- simOutput
   if(length(resOutput)==0){
       resOutput <- resSim
