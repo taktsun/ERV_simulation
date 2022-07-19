@@ -24,8 +24,8 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 5 #number of observation (time points per participant)
-simn <- 1 #number of simulations (participant)
+n <- 2 #number of observation (time points per participant)
+simn <- 2 #number of simulations (participant)
 scalemin <- 0
 
 # other settings and testing conditions
@@ -170,13 +170,6 @@ funsim <- function(i.siminput){
 }
 
 funcal <- function(i.siminput,dfSim){
-  simOutput <- data.frame(n = n, autocorr = siminput$autocorr[i.siminput],
-                          meanshift = siminput$meanshift[i.siminput],
-                          correlation = siminput$correlation[i.siminput],
-                          ER_mean = siminput$ER_mean[i.siminput],
-                          ER_withinSD = siminput$ER_withinSD[i.siminput],
-                          ERn = siminput$ERn[i.siminput],
-                          scalemax = siminput$scalemax[i.siminput])
 
   #---- ER Variability candidate indices
 
@@ -327,8 +320,10 @@ funcal <- function(i.siminput,dfSim){
   }
 
   #---- simOutput
-
-  simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
+  #empirical auto correlation
+  simOutput <- data.frame(em_autocorr = NA)
+  simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2]
+  #has to exclude the blank column otherwise cor throws error
   simOutput$em_cor<- tryCatch(mean(cor(dfSim[1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA)
   simOutput$em_r <- tryCatch(sqrt(summary(lm(a ~ ., data = dfSim))$r.squared), error=function(err) NA)
   simOutput$mean_sd <- mean(dfNew$sd[istart:n])
@@ -403,7 +398,8 @@ for (i in 1:nrow(siminput)){
   }
 }
 
-
+resInfo <- siminput[rep(seq_len(nrow(siminput)), each = simn), ]
+resOutput <- cbind(resInfo,resOutput)
 # ============
 # calculate the fit
 # ============
