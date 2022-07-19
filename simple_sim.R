@@ -1,10 +1,10 @@
 library(betapart)
 library(plyr)
-library(tidyverse)
 library(ppcor)
 library(vegan)
 library(entropy)
-library(faux)
+library(faux) #doesn't need it anymore if not using mvrnorm
+library(tsDyn) # package for VAR.sim
 
 options(scipen=999)
 #======================
@@ -24,11 +24,11 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 50 #number of observation (time points per participant)
-simn <- 1 #number of simulations (participant)
+n <- 10 #number of observation (time points per participant)
+simn <- 2 #number of simulations (participant)
 scalemin <- 0
 
-# other settings andtesting conditions
+# other settings and testing conditions
 ERblankn <- 1 # number of "unused" (always 0) ER strategies. Always set >=1 (between-SD needs at least 2 to calculate)
 zerotransform <- TRUE # whether or not to replace 0 with 0.0001. TRUE recommended because 0 are not true 0
 rounding <- TRUE # whether or not round scores to integers
@@ -40,9 +40,11 @@ set.seed(1999)
 # varying simulation parameters
 siminput <- expand.grid(
   # higher meanshift, less rank changes occur, lower ERV expected
-  meanshift = c(0.0,2.0),
+  meanshift = c(0.0,2),
   # higher auto correlation, lower ERV expected
   autocorr = c(0.25,0.75),
+  # correlation: expects no relationship
+  correlation = c(0.0,0.5),
   #  mean ER endorsement: expects no relationship
   ER_mean = c(0.2,0.3,0.4),
   # higher within-strategy SD, higher ERV expected
@@ -57,34 +59,75 @@ siminput <- expand.grid(
 # ==================================
 # define functions
 # ==================================
-funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
-    simOutput <- data.frame(n = n, autocorr = autocorr, meanshift = meanshift,
-                          ER_mean = ER_mean,
+funsim <- function(autocorr,meanshift, correlation, ER_mean, ER_withinSD, ERn, scalemax){
+    simOutput <- data.frame(n = n, autocorr = autocorr,
+                            meanshift = meanshift,
+                            correlation = correlation,
+                            ER_mean = ER_mean,
                           ER_withinSD = ER_withinSD,
                           ERn = ERn,
                           scalemax = scalemax)
 
   #---- simulating ER strategies
-
-  dfSim <- data.frame(a = 1:n)
-  # Generate main strategy: by mvrnorm.
-  # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
-  tmp.r <- matrix(autocorr, n, n)
-  tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
-  tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
-  dfSim$a <- tmp.dist * ER_withinSD*scalemax + ER_mean*scalemax
-
-  #Create other strategies
-  if(ERn>1){
-    for (i in 2:ERn){
-      dfSim[letters[i]] <- scalemax*(   ER_mean +
-                                          # varies relative to ratings of 1st ER
-                                          (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)*ER_withinSD +
-                                         # mean shift, random direction per person
-                                         (sign(rnorm(1))*meanshift*ER_withinSD)
-                                     )
+    # Using the VAR.sim method...
+    # VAR.sim must create multivariate time series.
+    if (ERn >1){
+      tmpERn <- ERn
+    }else{
+      tmpERn <- 2
     }
-  }
+    CV <- diag(1, tmpERn,tmpERn)
+    CV[CV == 0] <- correlation
+    B1 <- diag(autocorr, tmpERn,tmpERn)
+    # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
+
+    # create an alternating -1,1,... vector for mean-shifting other strategies
+    signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
+    signvector[1] <- 0
+    signvector <- signvector[1:ERn]
+    # adjust it so that the overall mean (of all strategies) remain as first specified
+    signvector <- signvector-sum(signvector)/ERn
+    # repeat it n times to fit the # of observations
+    signvector <- rep(signvector, each = n)
+
+    if (ERn >1){
+      dfSim <- data.frame(VAR.sim(B=B1, n=n, include="none",varcov=CV))
+    }else{
+      # VAR.sim must create multivariate time series;
+      # cut back to 1 col
+      dfSim <- data.frame(VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
+    }
+    colnames(dfSim) <- letters[1:ERn]
+
+    # apply meanshift adjustment
+    dfOri <- dfSim
+    dfSim <- dfSim + signvector*meanshift
+    # Scale up to within-strategy SD and ER mean endorsement
+    dfSim <- dfSim*ER_withinSD*scalemax
+    dfSim <- dfSim+ER_mean*scalemax
+
+
+  # Using mvrnorm and meanshift to create strategies
+
+  # dfSim <- data.frame(a = 1:n)
+  # # Generate main strategy: by mvrnorm.
+  # # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
+  # tmp.r <- matrix(autocorr, n, n)
+  # tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
+  # tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
+  # dfSim$a <- tmp.dist * ER_withinSD*scalemax + ER_mean*scalemax
+  #
+  # #Create other strategies
+  # if(ERn>1){
+  #   for (i in 2:ERn){
+  #     dfSim[letters[i]] <- scalemax*(   ER_mean +
+  #                                         # varies relative to ratings of 1st ER
+  #                                         (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)*ER_withinSD +
+  #                                        # mean shift, random direction per person
+  #                                        (sign(rnorm(1))*meanshift*ER_withinSD)
+  #                                    )
+  #   }
+  # }
 
   #Create "blank" strategies
   if(ERblankn>0){
@@ -313,6 +356,7 @@ returnfit <- function(measure,dfreturn){
   dftemp <- data.frame(measure = dfreturn[,measure],
                        autocorr = dfreturn$autocorr,
                        meanshift = dfreturn$meanshift,
+                       correlation = dfreturn$correlation,
                        # emautocorr = dfreturn$em_autocorr,
                        # emcor = dfreturn$em_r,
                        ER_mean = dfreturn$ER_mean,
@@ -337,7 +381,9 @@ returnfit <- function(measure,dfreturn){
 
 resOutput <- data.frame()
 for (i in 1:nrow(siminput)){
-  resSim<-rdply(simn,funsim(siminput$autocorr[i],siminput$meanshift[i],
+  resSim<-rdply(simn,funsim(siminput$autocorr[i],
+                            siminput$meanshift[i],
+                            siminput$correlation[i],
                             siminput$ER_mean[i],
                             siminput$ER_withinSD[i],
                             siminput$ERn[i],
