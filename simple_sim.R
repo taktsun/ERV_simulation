@@ -24,8 +24,8 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 4 #number of observation (time points per participant)
-simn <- 1 #number of simulations (participant)
+n <- 10 #number of observation (time points per participant)
+simn <- 3 #number of simulations (participant)
 scalemin <- 0
 
 # other settings and testing conditions
@@ -40,11 +40,10 @@ set.seed(1999)
 # varying simulation parameters
 siminput <- expand.grid(
   # higher meanshift, less rank changes occur, lower ERV expected
-  meanshift = c(0.0,2),
+  meanshift = c(0.0,2.0),
   # higher auto correlation, lower ERV expected
   autocorr = c(0.25,0.75),
-  # correlation: expects no relationship
-  correlation = c(0.0,0.5),
+  correlation = c(0),
   #  mean ER endorsement: expects no relationship
   ER_mean = c(0.2,0.3,0.4),
   # higher within-strategy SD, higher ERV expected
@@ -70,6 +69,16 @@ funsim <- function(i.siminput){
 
 
   #---- simulating ER strategies
+    # create an alternating -1,1,... vector for mean-shifting other strategies
+    signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
+    signvector[1] <- 0
+    signvector <- signvector[1:ERn]
+    # adjust it so that the overall mean (of all strategies) remain as first specified
+    signvector <- signvector-sum(signvector)/ERn
+    # repeat signvector n times to fit the # of observations
+    signvector <- rep(signvector, each = n)
+
+    # # ----------------------------------------------------
     # # Using the VAR.sim method...
     # # VAR.sim must create multivariate time series.
     # if (ERn >1){
@@ -81,16 +90,6 @@ funsim <- function(i.siminput){
     # CV[CV == 0] <- correlation
     # B1 <- diag(autocorr, tmpERn,tmpERn)
     # # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
-    #
-    # # create an alternating -1,1,... vector for mean-shifting other strategies
-    # signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
-    # signvector[1] <- 0
-    # signvector <- signvector[1:ERn]
-    # # adjust it so that the overall mean (of all strategies) remain as first specified
-    # signvector <- signvector-sum(signvector)/ERn
-    # # repeat it n times to fit the # of observations
-    # signvector <- rep(signvector, each = n)
-    #
     # if (ERn >1){
     #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
     # }else{
@@ -98,33 +97,30 @@ funsim <- function(i.siminput){
     #   # cut back to 1 col
     #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
     # }
-    #
-    # # apply meanshift adjustment
-    # dfSim <- dfSim + signvector*meanshift
+    # # ----------------------------------------------------
 
 
-
+  # ----------------------------------------------------
   # Using mvrnorm and meanshift to create strategies
   # Generate main strategy: by mvrnorm.
   # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
   tmp.r <- matrix(autocorr, n, n)
   tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
   tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
-
-    dfSim <- tmp.dist
+  dfSim <- tmp.dist
 
   #Create other strategies
   if(ERn>1){
     for (i in 2:ERn){
-      tmp.ER <-  (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2) +
-                # mean shift, random direction per person
-                (sign(rnorm(1))*meanshift)
-
+      tmp.ER <-  (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)
       dfSim <- cbind(dfSim, tmp.ER)
-
      }
   }
+  # ----------------------------------------------------
 
+
+  # apply meanshift adjustment
+    dfSim <- dfSim + signvector*meanshift
   # Scale up the simulated data to match the mean, SD and scalemax parameters
    dfSim <- dfSim*ER_withinSD*scalemax
    dfSim <- dfSim+ER_mean*scalemax
@@ -158,9 +154,9 @@ funsim <- function(i.siminput){
 
   # rounding
   # CJ: This relates to measurement, so remove for now
-  # if(rounding){
-  #   dfSim[] <- round(dfSim,0)
-  # }
+  if(rounding){
+    dfSim[] <- round(dfSim,0)
+  }
 
   # replace 0 with 0.0001 because 0 are not true zero (interval scale not ratio scale)
   # CJ: This problem will probably go away if you're no longer rounding
