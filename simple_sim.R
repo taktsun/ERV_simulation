@@ -225,6 +225,7 @@ funcal <- function(i.siminput,dfSim){
 
 
   # Momentary ERV: different measures
+
   mom.euclidean <- apply(mat.euclidean,1,mean)*n/(n-1)
   mom.manhattan  <- apply(mat.manhattan,1,mean)*n/(n-1)
   mom.chord <- apply(mat.chord,1,mean)*n/(n-1)
@@ -330,7 +331,7 @@ dis_suc_vector <- function(distmat){
 }
 
 # function to return partial correlations ofdissimlarity measures to the 3 parameters
-returnfit <- function(measure,dfreturn){
+returnfit <- function(measure,dfreturn,testtype){
   dftemp <- data.frame(measure = dfreturn[,measure],
                        autocorr = dfreturn$autocorr,
                        meanshift = dfreturn$meanshift,
@@ -345,7 +346,12 @@ returnfit <- function(measure,dfreturn){
     if (is.na(dfreturn[1,measure])){
     tempfitres <-  (data.frame(rep(NA, length(dftemp))))
     }else{
-    tempfitres <- (pcor(dftemp)$estimate[1,])
+      if (testtype=="pcor"){
+      tempfitres <- (pcor(dftemp)$estimate[1,])
+      }
+      if (testtype=="cor"){
+      tempfitres <- (cor(dftemp)[1,])
+      }
     }
   #renaming is needed because if sim parameters doesn't change the pcor does not return names
   names(tempfitres) <- names(dftemp)
@@ -392,9 +398,9 @@ colnames(resOutput) <- c("em_autocorr",
 resInfo <- siminput[rep(seq_len(nrow(siminput)), each = simn), ]
 resOutput <- cbind(resInfo,resOutput)
 
-# ============
-# calculate the fit
-# ============
+# ============================================================
+# calculate the fit with partial-correlation and correlation
+# ============================================================
 
 
 returninput <- c("mean_sd",
@@ -410,16 +416,30 @@ returninput <- c("mean_sd",
                  "mean_kulczynski",
                  "mean_KLdiv"
                  )
-resSummary <- data.frame()
+resSummary_partialcor <- data.frame()
 for (i in 1:length(returninput)){
-  if(length(resSummary)==0){
-    resSummary <- data.frame(as.list(returnfit(returninput[i],resOutput)))
+  if(length(resSummary_partialcor)==0){
+    resSummary_partialcor <- data.frame(as.list(returnfit(returninput[i],resOutput,"pcor")))
   }else{
-    tempdf <- data.frame(as.list(returnfit(returninput[i],resOutput)))
-    names(tempdf) <- names(resSummary)
-    resSummary <- rbind.data.frame(resSummary,tempdf)
+    tempdf <- data.frame(as.list(returnfit(returninput[i],resOutput,"pcor")))
+    names(tempdf) <- names(resSummary_partialcor)
+    resSummary_partialcor <- rbind.data.frame(resSummary_partialcor,tempdf)
   }
-  resSummary[i,1] <- returninput[i]
+  resSummary_partialcor[i,1] <- returninput[i]
 }
 
-resSummary
+resSummary_cor <- data.frame()
+for (i in 1:length(returninput)){
+  if(length(resSummary_cor)==0){
+    resSummary_cor <- data.frame(as.list(returnfit(returninput[i],resOutput, "cor")))
+  }else{
+    tempdf <- data.frame(as.list(returnfit(returninput[i],resOutput, "cor")))
+    names(tempdf) <- names(resSummary_cor)
+    resSummary_cor <- rbind.data.frame(resSummary_cor,tempdf)
+  }
+  resSummary_cor[i,1] <- returninput[i]
+}
+
+
+resSummary_partialcor
+resSummary_cor
