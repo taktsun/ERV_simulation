@@ -242,8 +242,9 @@ funcal <- function(i.siminput,dfSim){
   suc.bray <- dis_suc_vector(mat.braypart.all)
   suc.bray.bal <- dis_suc_vector(mat.braypart.bal)
   suc.bray.gra <- dis_suc_vector(mat.braypart.gra)
+  suc.KLdiv <- dis_suc_vector(mat.KLdiv)
 
-  #
+
   for (i in 1:n){
 
     dfNew$edist[i] <- dis_from_moment(mat.euc,i) + suc.edist[i]
@@ -276,7 +277,7 @@ funcal <- function(i.siminput,dfSim){
 
     # KL Divergence
 
-    dfNew$KLdiv[i] <- dis_from_moment(mat.KLdiv,i)
+    dfNew$KLdiv[i] <- dis_from_moment(mat.KLdiv,i) + suc.KLdiv[i]
 
     # Momentary Bray-Curtis dissimilarity by beta.part
     # there appears to be some limitation on the bray.part on handling 1 ER stgy only
