@@ -359,16 +359,16 @@ returnfit <- function(measure,dfreturn){
 # actually running the simulation
 # ====================================
 
+
 resOutput <- c()
 for (i in 1:nrow(siminput)){
-  resSim<-rdply(simn,simulatecalculate(i))
+  resSim<-t(replicate(simn,simulatecalculate(i)))
   if(length(resOutput)==0){
       resOutput <- resSim
     }else{
       resOutput <- rbind(resOutput,resSim)
   }
 }
-resOutput <- resOutput[2:ncol(resOutput)]
 colnames(resOutput) <- c("em_autocorr",
                          "em_cor",
                          "em_r",
