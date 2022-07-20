@@ -258,19 +258,19 @@ funcal <- function(i.siminput,dfSim){
     suc.bray.gra <- dis_suc_vector(mat.braypart.gra)
     suc.KLdiv <- dis_suc_vector(mat.KLdiv)
 
-    mom.edist <- mom.edist+suc.edist
-    mom.manhattan  <-mom.manhattan+suc.manhattan
-    mom.chord <- mom.chord + suc.chord
-    mom.chisq  <- mom.chisq + suc.chisq
-    mom.logchord <- mom.logchord + suc.logchord
-    mom.hel <- mom.hel + suc.hel
-    mom.jaccard<- mom.jaccard + suc.jaccard
-    mom.kulczynski <- mom.kulczynski + suc.kulczynski
-    mom.brayveg <- mom.brayveg + suc.brayveg
-    mom.bray  <- mom.bray+suc.bray
-    mom.bray.bal <- mom.bray.bal+suc.bray.bal
-    mom.bray.gra <- mom.bray.gra+suc.bray.gra
-    mom.KLdiv <- mom.KLdiv+suc.KLdiv
+    mom.edist <- (mom.edist+suc.edist)/2
+    mom.manhattan  <-(mom.manhattan+suc.manhattan)/2
+    mom.chord <- (mom.chord + suc.chord)/2
+    mom.chisq  <- (mom.chisq + suc.chisq)/2
+    mom.logchord <- (mom.logchord + suc.logchord)/2
+    mom.hel <- (mom.hel + suc.hel)/2
+    mom.jaccard<- (mom.jaccard + suc.jaccard)/2
+    mom.kulczynski <- (mom.kulczynski + suc.kulczynski)/2
+    mom.brayveg <- (mom.brayveg + suc.brayveg)/2
+    mom.bray  <- (mom.bray+suc.bray)/2
+    mom.bray.bal <- (mom.bray.bal+suc.bray.bal)/2
+    mom.bray.gra <- (mom.bray.gra+suc.bray.gra)/2
+    mom.KLdiv <- (mom.KLdiv+suc.KLdiv)/2
   }
 
 
