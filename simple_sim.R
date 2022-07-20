@@ -24,7 +24,7 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 10 #number of observation (time points per participant)
+n <- 2 #number of observation (time points per participant)
 simn <- 3 #number of simulations (participant)
 scalemin <- 0
 
@@ -156,7 +156,7 @@ funsim <- function(i.siminput){
   # rounding
   # CJ: This relates to measurement, so remove for now
   if(rounding){
-    dfSim[] <- round(dfSim,0)
+    dfSim <- round(dfSim,0)
   }
 
   # replace 0 with 0.0001 because 0 are not true zero (interval scale not ratio scale)
@@ -182,7 +182,7 @@ funcal <- function(i.siminput,dfSim){
   # standardize
   dfnorm_chord <- decostand(dfSim,"norm")
   dfnorm_logchord <- decostand(log1p(dfSim),"norm")
-  dfnorm_hel <- decostand(dfSim,"hel")
+  dfnorm_hellinger <- decostand(dfSim,"hellinger")
   dfnorm_prob <- decostand(dfSim,"total")
   if (ERblankn == 0  | zerotransform == TRUE){
     dfnorm_chi <- decostand(dfSim,"chi.square")
@@ -208,10 +208,10 @@ funcal <- function(i.siminput,dfSim){
   mat.chord <- as.matrix(vegdist(dfnorm_chord, method = "euc")) # or vegdist(dfSim,method="chord")
   mat.logchord <- as.matrix(vegdist(dfnorm_logchord, method = "euc"))
   mat.chisq <- as.matrix(vegdist(dfnorm_chi, method = "euc")) # or vegdist(dfSim,method="chisq")
-  mat.hel <- as.matrix(vegdist(dfnorm_hel, method = "euc"))
+  mat.hellinger <- as.matrix(vegdist(dfnorm_hellinger, method = "euc"))
   mat.jaccard <- as.matrix(vegdist(dfSim,method="jaccard"))
   mat.kulczynski <- as.matrix(vegdist(dfSim,method="kulczynski"))
-  mat.bray <- as.matrix(vegdist(dfSim,method="bray"))
+  mat.brayveg <- as.matrix(vegdist(dfSim,method="bray"))
   resbraypart <- bray.part(dfSim)
   mat.braypart.all <- as.matrix(resbraypart$bray)
   mat.braypart.bal <- as.matrix(resbraypart$bray.bal)
@@ -231,13 +231,13 @@ funcal <- function(i.siminput,dfSim){
   mom.chord <- apply(mat.chord,1,mean)*n/(n-1)
   mom.chisq  <- apply(mat.chisq,1,mean)*n/(n-1)
   mom.logchord <- apply(mat.logchord,1,mean)*n/(n-1)
-  mom.hel <- apply(mat.hel,1,mean)*n/(n-1)
+  mom.hellinger <- apply(mat.hellinger,1,mean)*n/(n-1)
   mom.jaccard<- apply(mat.jaccard,1,mean)*n/(n-1)
   mom.kulczynski <- apply(mat.kulczynski,1,mean)*n/(n-1)
-  mom.brayveg <- apply(mat.bray,1,mean)*n/(n-1)
-  mom.bray  <- apply(mat.braypart.all,1,mean)*n/(n-1)
-  mom.bray.bal <- apply(mat.braypart.bal,1,mean)*n/(n-1)
-  mom.bray.gra <- apply(mat.braypart.gra,1,mean)*n/(n-1)
+  mom.brayveg <- apply(mat.brayveg,1,mean)*n/(n-1)
+  mom.braypart.all  <- apply(mat.braypart.all,1,mean)*n/(n-1)
+  mom.braypart.bal <- apply(mat.braypart.bal,1,mean)*n/(n-1)
+  mom.braypart.gra <- apply(mat.braypart.gra,1,mean)*n/(n-1)
   mom.KLdiv <- apply(mat.KLdiv,1,mean)*n/(n-1)
 
   if (successivecomp){
@@ -247,13 +247,13 @@ funcal <- function(i.siminput,dfSim){
     suc.chord <- dis_suc_vector(mat.chord)
     suc.chisq <- dis_suc_vector(mat.chisq)
     suc.logchord <- dis_suc_vector(mat.logchord)
-    suc.hel <- dis_suc_vector(mat.hel)
+    suc.hellinger <- dis_suc_vector(mat.hellinger)
     suc.jaccard <- dis_suc_vector(mat.jaccard)
     suc.kulczynski <- dis_suc_vector(mat.kulczynski)
-    suc.brayveg <- dis_suc_vector(mat.bray)
-    suc.bray <- dis_suc_vector(mat.braypart.all)
-    suc.bray.bal <- dis_suc_vector(mat.braypart.bal)
-    suc.bray.gra <- dis_suc_vector(mat.braypart.gra)
+    suc.brayveg <- dis_suc_vector(mat.brayveg)
+    suc.braypart.all <- dis_suc_vector(mat.braypart.all)
+    suc.braypart.bal <- dis_suc_vector(mat.braypart.bal)
+    suc.braypart.gra <- dis_suc_vector(mat.braypart.gra)
     suc.KLdiv <- dis_suc_vector(mat.KLdiv)
 
     mom.edist <- (mom.edist+suc.edist)/2
@@ -261,13 +261,13 @@ funcal <- function(i.siminput,dfSim){
     mom.chord <- (mom.chord + suc.chord)/2
     mom.chisq  <- (mom.chisq + suc.chisq)/2
     mom.logchord <- (mom.logchord + suc.logchord)/2
-    mom.hel <- (mom.hel + suc.hel)/2
+    mom.hellinger <- (mom.hellinger + suc.hellinger)/2
     mom.jaccard<- (mom.jaccard + suc.jaccard)/2
     mom.kulczynski <- (mom.kulczynski + suc.kulczynski)/2
     mom.brayveg <- (mom.brayveg + suc.brayveg)/2
-    mom.bray  <- (mom.bray+suc.bray)/2
-    mom.bray.bal <- (mom.bray.bal+suc.bray.bal)/2
-    mom.bray.gra <- (mom.bray.gra+suc.bray.gra)/2
+    mom.braypart.all  <- (mom.braypart.all+suc.braypart.all)/2
+    mom.braypart.bal <- (mom.braypart.bal+suc.braypart.bal)/2
+    mom.braypart.gra <- (mom.braypart.gra+suc.braypart.gra)/2
     mom.KLdiv <- (mom.KLdiv+suc.KLdiv)/2
   }
 
@@ -277,13 +277,13 @@ funcal <- function(i.siminput,dfSim){
   dfNew <- cbind(dfNew,chord = mom.chord)
   dfNew <- cbind(dfNew,chisq = mom.chisq)
   dfNew <- cbind(dfNew,logchord = mom.logchord)
-  dfNew <- cbind(dfNew,hel = mom.hel)
+  dfNew <- cbind(dfNew,hellinger = mom.hellinger)
   dfNew <- cbind(dfNew,jaccard = mom.jaccard)
   dfNew <- cbind(dfNew,kulczynski = mom.kulczynski)
   dfNew <- cbind(dfNew,brayveg = mom.brayveg)
-  dfNew <- cbind(dfNew,bray = mom.bray)
-  dfNew <- cbind(dfNew,bray.bal = mom.bray.bal)
-  dfNew <- cbind(dfNew,bray.gra = mom.bray.gra)
+  dfNew <- cbind(dfNew,braypart.all = mom.braypart.all)
+  dfNew <- cbind(dfNew,braypart.bal = mom.braypart.bal)
+  dfNew <- cbind(dfNew,braypart.gra = mom.braypart.gra)
   dfNew <- cbind(dfNew,KLdiv = mom.KLdiv)
 
   # Multi-site Bray-Curtis dissimilarity
@@ -297,7 +297,7 @@ funcal <- function(i.siminput,dfSim){
                  mean_sd <- mean(dfNew[istart:n,"sd"]) ,
                  mean_edist <- mean(dfNew[istart:n,"edist"]) ,
                  mean_manhattan <-mean(dfNew[istart:n,"manhattan"]) ,
-                 mean_hellinger <- mean(dfNew[istart:n,"hel"]) ,
+                 mean_hellinger <- mean(dfNew[istart:n,"hellinger"]) ,
                  mean_jaccard <- mean(dfNew[istart:n,"jaccard"]) ,
                  mean_chisq <-mean(dfNew[istart:n,"chisq"]) ,
                  mean_logchord <-mean(dfNew[istart:n,"logchord"]) ,
@@ -305,12 +305,12 @@ funcal <- function(i.siminput,dfSim){
                  mean_kulczynski <-mean(dfNew[istart:n,"kulczynski"]) ,
                  mean_KLdiv <-mean(dfNew[istart:n,"KLdiv"]) ,
                  mean_brayveg <- mean(dfNew[istart:n,"brayveg"]) ,
-                 mean_bray <-mean(dfNew[istart:n,"bray"]) ,
-                 mean_bray.bal <-mean(dfNew[istart:n,"bray.bal"]) ,
-                 mean_bray.gra <-mean(dfNew[istart:n,"bray.gra"]) ,
+                 mean_bray.all <-mean(dfNew[istart:n,"braypart.all"]) ,
+                 mean_bray.bal <-mean(dfNew[istart:n,"braypart.bal"]) ,
+                 mean_bray.gra <-mean(dfNew[istart:n,"braypart.gra"]) ,
                  multibray.bal <- resBray$beta.BRAY.BAL,
                  multibray.gra <- resBray$beta.BRAY.GRA,
-                 multibray <- resBray$beta.BRAY
+                 multibray.all <- resBray$beta.BRAY
                  )
 
     return(simOutput)
@@ -381,12 +381,12 @@ colnames(resOutput) <- c("em_autocorr",
                          "mean_kulczynski",
                          "mean_KLdiv",
                          "mean_brayveg",
-                         "mean_bray",
-                         "mean_bray.bal",
-                         "mean_bray.gra",
+                         "mean_braypart.all",
+                         "mean_braypart.bal",
+                         "mean_braypart.gra",
                          "multibray.bal",
                          "multibray.gra",
-                         "multibray"
+                         "multibray.all"
 )
 
 #bind the simulation parameters to result
@@ -400,8 +400,8 @@ resOutput <- cbind(resInfo,resOutput)
 
 returninput <- c("mean_sd",
                  "mean_edist",
-                 "mean_bray",
-                 "multibray",
+                 "mean_brayveg",
+                 "multibray.all",
                  "mean_hellinger",
                  "mean_jaccard",
                  "mean_manhattan",
