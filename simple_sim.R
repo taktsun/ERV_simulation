@@ -24,8 +24,8 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 2 #number of observation (time points per participant)
-simn <- 2 #number of simulations (participant)
+n <- 4 #number of observation (time points per participant)
+simn <- 1 #number of simulations (participant)
 scalemin <- 0
 
 # other settings and testing conditions
@@ -179,6 +179,7 @@ funcal <- function(i.siminput,dfSim){
   dfNew <- dfSim
 
   # Momentary SD
+  # dfNew <- cbind(dfNew,sd = apply(dfSim,1,sd))
   dfNew$sd <- base::apply(dfSim,1,FUN = sd)
 
 
@@ -206,34 +207,37 @@ funcal <- function(i.siminput,dfSim){
 
   # Other matrices
 
-  mat.euc <- dist(dfSim)
-  mat.manhattan <- vegdist(dfSim,method = "manhattan")
-  mat.chord <- vegdist(dfnorm_chord, method = "euc") # or vegdist(dfSim,method="chord")
-  mat.logchord <- vegdist(dfnorm_logchord, method = "euc")
-  mat.chisq <- vegdist(dfnorm_chi, method = "euc") # or vegdist(dfSim,method="chisq")
-  mat.hel <- vegdist(dfnorm_hel, method = "euc")
-  mat.jaccard <- vegdist(dfSim,method="jaccard")
-  mat.kulczynski <- vegdist(dfSim,method="kulczynski")
-  mat.bray <- vegdist(dfSim,method="bray")
+  mat.euc <- as.matrix(dist(dfSim))
+  mat.manhattan <- as.matrix(vegdist(dfSim,method = "manhattan"))
+  mat.chord <- as.matrix(vegdist(dfnorm_chord, method = "euc")) # or vegdist(dfSim,method="chord")
+  mat.logchord <- as.matrix(vegdist(dfnorm_logchord, method = "euc"))
+  mat.chisq <- as.matrix(vegdist(dfnorm_chi, method = "euc")) # or vegdist(dfSim,method="chisq")
+  mat.hel <- as.matrix(vegdist(dfnorm_hel, method = "euc"))
+  mat.jaccard <- as.matrix(vegdist(dfSim,method="jaccard"))
+  mat.kulczynski <- as.matrix(vegdist(dfSim,method="kulczynski"))
+  mat.bray <- as.matrix(vegdist(dfSim,method="bray"))
   resbraypart <- bray.part(dfSim)
+  mat.braypart.all <- as.matrix(resbraypart$bray)
+  mat.braypart.bal <- as.matrix(resbraypart$bray.bal)
+  mat.braypart.gra <- as.matrix(resbraypart$bray.gra)
 
 
   # Momentary ERV: different measures
   for (i in 1:n){
 
     if (successivecomp & i>1){
-      suc.edist <- as.matrix(mat.euc)[i,i-1]
-      suc.manhattan <- as.matrix(mat.manhattan)[i,i-1]
-      suc.chord <- as.matrix(mat.chord)[i,i-1]
-      suc.chisq <- as.matrix(mat.chisq)[i,i-1]
-      suc.logchord <- as.matrix(mat.logchord)[i,i-1]
-      suc.hel <- as.matrix(mat.hel)[i,i-1]
-      suc.jaccard <- as.matrix(mat.jaccard)[i,i-1]
-      suc.kulczynski <- as.matrix(mat.kulczynski)[i,i-1]
-      suc.brayveg <- as.matrix(mat.bray)[i,i-1]
-      suc.bray <- as.matrix(resbraypart$bray)[i,i-1]
-      suc.bray.bal <- as.matrix(resbraypart$bray.bal)[i,i-1]
-      suc.bray.gra <- as.matrix(resbraypart$bray.gra)[i,i-1]
+      suc.edist <- mat.euc[i,i-1]
+      suc.manhattan <- mat.manhattan[i,i-1]
+      suc.chord <- mat.chord[i,i-1]
+      suc.chisq <- mat.chisq[i,i-1]
+      suc.logchord <- mat.logchord[i,i-1]
+      suc.hel <- mat.hel[i,i-1]
+      suc.jaccard <- mat.jaccard[i,i-1]
+      suc.kulczynski <- mat.kulczynski[i,i-1]
+      suc.brayveg <- mat.bray[i,i-1]
+      suc.bray <- mat.braypart.all[i,i-1]
+      suc.bray.bal <- mat.braypart.bal[i,i-1]
+      suc.bray.gra <- mat.braypart.gra[i,i-1]
     }else{
       suc.edist <- 0
       suc.manhattan <- 0
