@@ -138,8 +138,9 @@ funsim <- function(i.siminput){
   #limit the timeseries to min/max
   # CJ: Probably remove this, because it relates to measurement
   # CJ: But in general, boolean indexing is faster than ifelse()
-  dfSim <- apply(dfSim, 2, function(x) ifelse(x < scalemin , scalemin, x))
-  dfSim <- apply(dfSim, 2, function(x) ifelse(x > scalemax , scalemax, x))
+  dfSim[dfSim < scalemin] <- scalemin
+  dfSim[dfSim > scalemax] <- scalemax
+
 
   # testing purpose: first row to zero
   if(firstrowzero){
