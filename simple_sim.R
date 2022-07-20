@@ -221,66 +221,58 @@ funcal <- function(i.siminput,dfSim){
   mat.braypart.bal <- as.matrix(resbraypart$bray.bal)
   mat.braypart.gra <- as.matrix(resbraypart$bray.gra)
 
+  # if successive comparison, only observations 2:n are used because the 1st doesn't have a previous comparison
+  if (successivecomp){
+    istart <- 2
+  }else{
+    istart <- 1
+  }
+
 
   # Momentary ERV: different measures
+  suc.edist <- dis_suc_vector(mat.euc)
+  suc.manhattan <- dis_suc_vector(mat.manhattan)
+  suc.chord <- dis_suc_vector(mat.chord)
+  suc.chisq <- dis_suc_vector(mat.chisq)
+  suc.logchord <- dis_suc_vector(mat.logchord)
+  suc.hel <- dis_suc_vector(mat.hel)
+  suc.jaccard <- dis_suc_vector(mat.jaccard)
+  suc.kulczynski <- dis_suc_vector(mat.kulczynski)
+  suc.brayveg <- dis_suc_vector(mat.bray)
+  suc.bray <- dis_suc_vector(mat.braypart.all)
+  suc.bray.bal <- dis_suc_vector(mat.braypart.bal)
+  suc.bray.gra <- dis_suc_vector(mat.braypart.gra)
+
+  #
   for (i in 1:n){
 
-    if (successivecomp & i>1){
-      suc.edist <- mat.euc[i,i-1]
-      suc.manhattan <- mat.manhattan[i,i-1]
-      suc.chord <- mat.chord[i,i-1]
-      suc.chisq <- mat.chisq[i,i-1]
-      suc.logchord <- mat.logchord[i,i-1]
-      suc.hel <- mat.hel[i,i-1]
-      suc.jaccard <- mat.jaccard[i,i-1]
-      suc.kulczynski <- mat.kulczynski[i,i-1]
-      suc.brayveg <- mat.bray[i,i-1]
-      suc.bray <- mat.braypart.all[i,i-1]
-      suc.bray.bal <- mat.braypart.bal[i,i-1]
-      suc.bray.gra <- mat.braypart.gra[i,i-1]
-    }else{
-      suc.edist <- 0
-      suc.manhattan <- 0
-      suc.chord <- 0
-      suc.chisq <- 0
-      suc.logchord <- 0
-      suc.hel <- 0
-      suc.jaccard <- 0
-      suc.kulczynski <- 0
-      suc.brayveg <- 0
-      suc.bray <- 0
-      suc.bray.bal <- 0
-      suc.bray.gra <- 0
-
-          }
-
-    dfNew$edist[i] <- dis_from_moment(mat.euc,i) + suc.edist
-    dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i) + suc.manhattan
+    dfNew$edist[i] <- dis_from_moment(mat.euc,i) + suc.edist[i]
+    dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i) + suc.manhattan[i]
 
     # **zero row handling**
     # chord, logchord, chisq, hellinger appear to give okay results
     # when 0 are replaced by 0.0001
 
-    dfNew$logchord[i] <- dis_from_moment(mat.logchord,i) + suc.logchord
+    dfNew$logchord[i] <- dis_from_moment(mat.logchord,i) + suc.logchord[i]
 
     # chi sq cannot handle blank strategies
     if (ERblankn > 0 & zerotransform==FALSE){
       dfNew$chisq[i] <- NA
     }else{
-      dfNew$chisq[i] <- dis_from_moment(mat.chisq,i) + suc.chisq
+      dfNew$chisq[i] <- dis_from_moment(mat.chisq,i) + suc.chisq[i]
     }
 
 
-    dfNew$hellinger[i] <- dis_from_moment(mat.hel,i) + suc.hel
-    dfNew$chord[i] <- dis_from_moment(mat.chord,i) + suc.chord
+    dfNew$hellinger[i] <- dis_from_moment(mat.hel,i) + suc.hel[i]
+    dfNew$chord[i] <- dis_from_moment(mat.chord,i) + suc.chord[i]
 
     # **zero row handling**
     #jaccard & bray approaches 1 when all elements in a row approaches 0
     #kulczynski approaches 0.5 when all elements in a row approaches 0
 
-    dfNew$jaccard[i] <- dis_from_moment(mat.jaccard,i) + suc.jaccard
-    dfNew$kulczynski[i] <- dis_from_moment(mat.kulczynski,i) + suc.kulczynski
-    dfNew$brayveg[i] <- dis_from_moment(mat.bray,i) + suc.brayveg
+    dfNew$jaccard[i] <- dis_from_moment(mat.jaccard,i) + suc.jaccard[i]
+    dfNew$kulczynski[i] <- dis_from_moment(mat.kulczynski,i) + suc.kulczynski[i]
+    dfNew$brayveg[i] <- dis_from_moment(mat.bray,i) + suc.brayveg[i]
 
     # KL Divergence
 
@@ -289,45 +281,18 @@ funcal <- function(i.siminput,dfSim){
     # Momentary Bray-Curtis dissimilarity by beta.part
     # there appears to be some limitation on the bray.part on handling 1 ER stgy only
     # will throw 0 and warning message if there is only 1 ER stgy
-    dfNew$bray[i] <- dis_from_moment(resbraypart$bray,i) + suc.bray
-    dfNew$bray.bal[i] <- dis_from_moment(resbraypart$bray.bal,i) + suc.bray.bal
-    dfNew$bray.gra[i] <- dis_from_moment(resbraypart$bray.gra,i) + suc.bray.gra
-
-
-    # the below are old lines: distance between moment and mean
-    #   is different from mean distance of the moment to all other moments
-    #   might be needed to handle the complimentary zero problem (0,1,0) vs (1,0,1)
-
-    #dfNew$edist[i] <- (dist(rbind(x,y)))
-    #dfNew$manhattan[i] <- sum(abs(x -y))
-    #dfNew$chordnormed[i] <- vegdist(rbind(dfnorm_chord[i,],colMeans(dfnorm_chord)),"euc")
-    #dfNew$logchordnormed[i] <- vegdist(rbind(dfnorm_logchord[i,],colMeans(dfnorm_logchord)),"euc")
-    #dfNew$chinormed[i] <- vegdist(rbind(dfnorm_chi[i,],colMeans(dfnorm_chi)),"euc")
-    #dfNew$hellinger[i] <- sqrt(1/2 * sum(sqrt(x) -sqrt(y))^2)
-    #dfNew$hellingernormed[i] <- vegdist(rbind(dfnorm_hel[i,],colMeans(dfnorm_hel)),"euc")
-    #dfNew$chord[i] <- vegdist(rbind(x,y),method="chord")[1]
-    #dfNew$jaccard[i] <- vegdist(rbind(x,y),method="jaccard")[1]
-    #dfNew$chisq[i] <- vegdist(rbind(x,y),method="chisq")[1]
-    #dfNew$kulczynski[i] <- vegdist(rbind(x,y),method="kulczynski")[1]
-    #dfNew$brayveg[i] <- vegdist(rbind(x,y),method="bray")[1]
-    #resbraypart <- bray.part(rbind(dfSim[i,],base::lapply(dfSim[,],FUN = mean)))
-    #dfNew$bray[i] <- resbraypart$bray[1]
-    #dfNew$bray.bal[i] <- resbraypart$bray.bal[1]
-    #dfNew$bray.gra[i] <- resbraypart$bray.gra[1]
+    dfNew$bray[i] <- dis_from_moment(resbraypart$bray,i) + suc.bray[i]
+    dfNew$bray.bal[i] <- dis_from_moment(resbraypart$bray.bal,i) + suc.bray.bal[i]
+    dfNew$bray.gra[i] <- dis_from_moment(resbraypart$bray.gra,i) + suc.bray.gra[i]
 
   }
 
   # Multi-site Bray-Curtis dissimilarity
   resBray<- beta.multi.abund(dfSim)
 
-  if (successivecomp){
-    istart <- 2
-  }else{
-    istart <- 1
-  }
-
   #---- simOutput
   #empirical auto correlation
+
   simOutput <- data.frame(em_autocorr = NA)
   simOutput$em_autocorr<-acf(dfSim[,"a"], plot = FALSE)$acf[2]
   #has to exclude the blank column otherwise cor throws error
@@ -364,6 +329,10 @@ simulatecalculate <- function(i.siminput){
 dis_from_moment <- function(distobj,obs){
   nobs <- n
   return (mean(as.matrix(distobj)[obs,])*nobs/(nobs-1))
+}
+
+dis_suc_vector <- function(distmat){
+  return (c(0,(distmat[row(distmat) == col(distmat) + 1])))
 }
 
 # function to return partial correlations ofdissimlarity measures to the 3 parameters
