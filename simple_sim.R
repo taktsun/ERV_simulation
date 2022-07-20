@@ -1,9 +1,8 @@
-library(betapart)
-library(plyr)
-library(ppcor)
-library(vegan)
-library(entropy)
-# library(faux) #doesn't need it anymore if not using mvrnorm
+library(betapart) # partitioned bray-curtis dissimilarity
+#library(dplyr)
+library(ppcor) # partial correlation
+library(vegan) # dissimilarity measures
+library(entropy) # KL divergence
 library(tsDyn) # package for VAR.sim
 
 options(scipen=999)
@@ -202,6 +201,8 @@ funcal <- function(i.siminput,dfSim){
   mat.KLdiv[upper.tri(mat.KLdiv)] <- t(mat.KLdiv)[upper.tri(mat.KLdiv)]
 
   # Other matrices
+
+  resbraypart <- bray.part(dfSim)
 
   mat.euclidean <- as.matrix(dist(dfSim))
   mat.manhattan <- as.matrix(vegdist(dfSim,method = "manhattan"))
