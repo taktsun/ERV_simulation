@@ -203,16 +203,15 @@ funcal <- function(i.siminput,dfSim){
 
   # Other matrices
 
-  mat.euc <- as.matrix(dist(dfSim))
+  mat.euclidean <- as.matrix(dist(dfSim))
   mat.manhattan <- as.matrix(vegdist(dfSim,method = "manhattan"))
-  mat.chord <- as.matrix(vegdist(dfnorm_chord, method = "euc")) # or vegdist(dfSim,method="chord")
-  mat.logchord <- as.matrix(vegdist(dfnorm_logchord, method = "euc"))
-  mat.chisq <- as.matrix(vegdist(dfnorm_chi, method = "euc")) # or vegdist(dfSim,method="chisq")
-  mat.hellinger <- as.matrix(vegdist(dfnorm_hellinger, method = "euc"))
+  mat.chord <- as.matrix(vegdist(dfnorm_chord, method = "euclidean")) # or vegdist(dfSim,method="chord")
+  mat.logchord <- as.matrix(vegdist(dfnorm_logchord, method = "euclidean"))
+  mat.chisq <- as.matrix(vegdist(dfnorm_chi, method = "euclidean")) # or vegdist(dfSim,method="chisq")
+  mat.hellinger <- as.matrix(vegdist(dfnorm_hellinger, method = "euclidean"))
   mat.jaccard <- as.matrix(vegdist(dfSim,method="jaccard"))
   mat.kulczynski <- as.matrix(vegdist(dfSim,method="kulczynski"))
   mat.brayveg <- as.matrix(vegdist(dfSim,method="bray"))
-  resbraypart <- bray.part(dfSim)
   mat.braypart.all <- as.matrix(resbraypart$bray)
   mat.braypart.bal <- as.matrix(resbraypart$bray.bal)
   mat.braypart.gra <- as.matrix(resbraypart$bray.gra)
@@ -226,7 +225,7 @@ funcal <- function(i.siminput,dfSim){
 
 
   # Momentary ERV: different measures
-  mom.edist <- apply(mat.euc,1,mean)*n/(n-1)
+  mom.euclidean <- apply(mat.euclidean,1,mean)*n/(n-1)
   mom.manhattan  <- apply(mat.manhattan,1,mean)*n/(n-1)
   mom.chord <- apply(mat.chord,1,mean)*n/(n-1)
   mom.chisq  <- apply(mat.chisq,1,mean)*n/(n-1)
@@ -242,7 +241,7 @@ funcal <- function(i.siminput,dfSim){
 
   if (successivecomp){
 
-    suc.edist <- dis_suc_vector(mat.euc)
+    suc.euclidean <- dis_suc_vector(mat.euclidean)
     suc.manhattan <- dis_suc_vector(mat.manhattan)
     suc.chord <- dis_suc_vector(mat.chord)
     suc.chisq <- dis_suc_vector(mat.chisq)
@@ -256,7 +255,7 @@ funcal <- function(i.siminput,dfSim){
     suc.braypart.gra <- dis_suc_vector(mat.braypart.gra)
     suc.KLdiv <- dis_suc_vector(mat.KLdiv)
 
-    mom.edist <- (mom.edist+suc.edist)/2
+    mom.euclidean <- (mom.euclidean+suc.euclidean)/2
     mom.manhattan  <-(mom.manhattan+suc.manhattan)/2
     mom.chord <- (mom.chord + suc.chord)/2
     mom.chisq  <- (mom.chisq + suc.chisq)/2
@@ -272,7 +271,7 @@ funcal <- function(i.siminput,dfSim){
   }
 
 
-  dfNew <- cbind(dfNew,edist = mom.edist)
+  dfNew <- cbind(dfNew,euclidean = mom.euclidean)
   dfNew <- cbind(dfNew,manhattan = mom.manhattan)
   dfNew <- cbind(dfNew,chord = mom.chord)
   dfNew <- cbind(dfNew,chisq = mom.chisq)
@@ -295,7 +294,7 @@ funcal <- function(i.siminput,dfSim){
                  em_cor<- tryCatch(mean(cor(dfSim[,1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[,1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA),
                  em_r <- tryCatch(sqrt(summary(lm(a ~ ., data = as.data.frame(dfSim)))$r.squared), error=function(err) NA),
                  mean_sd <- mean(dfNew[istart:n,"sd"]) ,
-                 mean_edist <- mean(dfNew[istart:n,"edist"]) ,
+                 mean_euclidean <- mean(dfNew[istart:n,"euclidean"]) ,
                  mean_manhattan <-mean(dfNew[istart:n,"manhattan"]) ,
                  mean_hellinger <- mean(dfNew[istart:n,"hellinger"]) ,
                  mean_jaccard <- mean(dfNew[istart:n,"jaccard"]) ,
@@ -371,7 +370,7 @@ colnames(resOutput) <- c("em_autocorr",
                          "em_cor",
                          "em_r",
                          "mean_sd",
-                         "mean_edist",
+                         "mean_euclidean",
                          "mean_manhattan",
                          "mean_hellinger",
                          "mean_jaccard",
@@ -399,7 +398,7 @@ resOutput <- cbind(resInfo,resOutput)
 
 
 returninput <- c("mean_sd",
-                 "mean_edist",
+                 "mean_euclidean",
                  "mean_brayveg",
                  "multibray.all",
                  "mean_hellinger",
