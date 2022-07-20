@@ -70,63 +70,64 @@ funsim <- function(i.siminput){
 
 
   #---- simulating ER strategies
-    # Using the VAR.sim method...
-    # VAR.sim must create multivariate time series.
-    if (ERn >1){
-      tmpERn <- ERn
-    }else{
-      tmpERn <- 2
-    }
-    CV <- diag(1, tmpERn,tmpERn)
-    CV[CV == 0] <- correlation
-    B1 <- diag(autocorr, tmpERn,tmpERn)
-    # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
+    # # Using the VAR.sim method...
+    # # VAR.sim must create multivariate time series.
+    # if (ERn >1){
+    #   tmpERn <- ERn
+    # }else{
+    #   tmpERn <- 2
+    # }
+    # CV <- diag(1, tmpERn,tmpERn)
+    # CV[CV == 0] <- correlation
+    # B1 <- diag(autocorr, tmpERn,tmpERn)
+    # # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
+    #
+    # # create an alternating -1,1,... vector for mean-shifting other strategies
+    # signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
+    # signvector[1] <- 0
+    # signvector <- signvector[1:ERn]
+    # # adjust it so that the overall mean (of all strategies) remain as first specified
+    # signvector <- signvector-sum(signvector)/ERn
+    # # repeat it n times to fit the # of observations
+    # signvector <- rep(signvector, each = n)
+    #
+    # if (ERn >1){
+    #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
+    # }else{
+    #   # VAR.sim must create multivariate time series;
+    #   # cut back to 1 col
+    #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
+    # }
+    #
+    # # apply meanshift adjustment
+    # dfSim <- dfSim + signvector*meanshift
 
-    # create an alternating -1,1,... vector for mean-shifting other strategies
-    signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
-    signvector[1] <- 0
-    signvector <- signvector[1:ERn]
-    # adjust it so that the overall mean (of all strategies) remain as first specified
-    signvector <- signvector-sum(signvector)/ERn
-    # repeat it n times to fit the # of observations
-    signvector <- rep(signvector, each = n)
-
-    if (ERn >1){
-      dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
-    }else{
-      # VAR.sim must create multivariate time series;
-      # cut back to 1 col
-      dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
-    }
-
-    # apply meanshift adjustment
-    dfSim <- dfSim + signvector*meanshift
-    # Scale up to within-strategy SD and ER mean endorsement
-    dfSim <- dfSim*ER_withinSD*scalemax
-    dfSim <- dfSim+ER_mean*scalemax
 
 
   # Using mvrnorm and meanshift to create strategies
+  # Generate main strategy: by mvrnorm.
+  # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
+  tmp.r <- matrix(autocorr, n, n)
+  tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
+  tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
 
-  # dfSim <- data.frame(a = 1:n)
-  # # Generate main strategy: by mvrnorm.
-  # # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
-  # tmp.r <- matrix(autocorr, n, n)
-  # tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
-  # tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
-  # dfSim$a <- tmp.dist * ER_withinSD*scalemax + ER_mean*scalemax
-  #
-  # #Create other strategies
-  # if(ERn>1){
-  #   for (i in 2:ERn){
-  #     dfSim[letters[i]] <- scalemax*(   ER_mean +
-  #                                         # varies relative to ratings of 1st ER
-  #                                         (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)*ER_withinSD +
-  #                                        # mean shift, random direction per person
-  #                                        (sign(rnorm(1))*meanshift*ER_withinSD)
-  #                                    )
-  #   }
-  # }
+    dfSim <- tmp.dist
+
+  #Create other strategies
+  if(ERn>1){
+    for (i in 2:ERn){
+      tmp.ER <-  (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2) +
+                # mean shift, random direction per person
+                (sign(rnorm(1))*meanshift)
+
+      dfSim <- cbind(dfSim, tmp.ER)
+
+     }
+  }
+
+  # Scale up the simulated data to match the mean, SD and scalemax parameters
+   dfSim <- dfSim*ER_withinSD*scalemax
+   dfSim <- dfSim+ER_mean*scalemax
 
   #Create "blank" strategies
   if(ERblankn>0){
