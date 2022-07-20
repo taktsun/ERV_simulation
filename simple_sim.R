@@ -179,9 +179,7 @@ funcal <- function(i.siminput,dfSim){
   dfNew <- dfSim
 
   # Momentary SD
-  # dfNew <- cbind(dfNew,sd = apply(dfSim,1,sd))
-  dfNew$sd <- base::apply(dfSim,1,FUN = sd)
-
+  dfNew <- cbind(dfNew,sd = apply(dfSim,1,sd))
 
   # standardize
   dfnorm_chord <- decostand(dfSim,"norm")
@@ -230,95 +228,94 @@ funcal <- function(i.siminput,dfSim){
 
 
   # Momentary ERV: different measures
-  suc.edist <- dis_suc_vector(mat.euc)
-  suc.manhattan <- dis_suc_vector(mat.manhattan)
-  suc.chord <- dis_suc_vector(mat.chord)
-  suc.chisq <- dis_suc_vector(mat.chisq)
-  suc.logchord <- dis_suc_vector(mat.logchord)
-  suc.hel <- dis_suc_vector(mat.hel)
-  suc.jaccard <- dis_suc_vector(mat.jaccard)
-  suc.kulczynski <- dis_suc_vector(mat.kulczynski)
-  suc.brayveg <- dis_suc_vector(mat.bray)
-  suc.bray <- dis_suc_vector(mat.braypart.all)
-  suc.bray.bal <- dis_suc_vector(mat.braypart.bal)
-  suc.bray.gra <- dis_suc_vector(mat.braypart.gra)
-  suc.KLdiv <- dis_suc_vector(mat.KLdiv)
+  mom.edist <- apply(mat.euc,1,mean)*n/(n-1)
+  mom.manhattan  <- apply(mat.manhattan,1,mean)*n/(n-1)
+  mom.chord <- apply(mat.chord,1,mean)*n/(n-1)
+  mom.chisq  <- apply(mat.chisq,1,mean)*n/(n-1)
+  mom.logchord <- apply(mat.logchord,1,mean)*n/(n-1)
+  mom.hel <- apply(mat.hel,1,mean)*n/(n-1)
+  mom.jaccard<- apply(mat.jaccard,1,mean)*n/(n-1)
+  mom.kulczynski <- apply(mat.kulczynski,1,mean)*n/(n-1)
+  mom.brayveg <- apply(mat.bray,1,mean)*n/(n-1)
+  mom.bray  <- apply(mat.braypart.all,1,mean)*n/(n-1)
+  mom.bray.bal <- apply(mat.braypart.bal,1,mean)*n/(n-1)
+  mom.bray.gra <- apply(mat.braypart.gra,1,mean)*n/(n-1)
+  mom.KLdiv <- apply(mat.KLdiv,1,mean)*n/(n-1)
 
+  if (successivecomp){
 
-  for (i in 1:n){
+    suc.edist <- dis_suc_vector(mat.euc)
+    suc.manhattan <- dis_suc_vector(mat.manhattan)
+    suc.chord <- dis_suc_vector(mat.chord)
+    suc.chisq <- dis_suc_vector(mat.chisq)
+    suc.logchord <- dis_suc_vector(mat.logchord)
+    suc.hel <- dis_suc_vector(mat.hel)
+    suc.jaccard <- dis_suc_vector(mat.jaccard)
+    suc.kulczynski <- dis_suc_vector(mat.kulczynski)
+    suc.brayveg <- dis_suc_vector(mat.bray)
+    suc.bray <- dis_suc_vector(mat.braypart.all)
+    suc.bray.bal <- dis_suc_vector(mat.braypart.bal)
+    suc.bray.gra <- dis_suc_vector(mat.braypart.gra)
+    suc.KLdiv <- dis_suc_vector(mat.KLdiv)
 
-    dfNew$edist[i] <- dis_from_moment(mat.euc,i) + suc.edist[i]
-    dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i) + suc.manhattan[i]
-
-    # **zero row handling**
-    # chord, logchord, chisq, hellinger appear to give okay results
-    # when 0 are replaced by 0.0001
-
-    dfNew$logchord[i] <- dis_from_moment(mat.logchord,i) + suc.logchord[i]
-
-    # chi sq cannot handle blank strategies
-    if (ERblankn > 0 & zerotransform==FALSE){
-      dfNew$chisq[i] <- NA
-    }else{
-      dfNew$chisq[i] <- dis_from_moment(mat.chisq,i) + suc.chisq[i]
-    }
-
-
-    dfNew$hellinger[i] <- dis_from_moment(mat.hel,i) + suc.hel[i]
-    dfNew$chord[i] <- dis_from_moment(mat.chord,i) + suc.chord[i]
-
-    # **zero row handling**
-    #jaccard & bray approaches 1 when all elements in a row approaches 0
-    #kulczynski approaches 0.5 when all elements in a row approaches 0
-
-    dfNew$jaccard[i] <- dis_from_moment(mat.jaccard,i) + suc.jaccard[i]
-    dfNew$kulczynski[i] <- dis_from_moment(mat.kulczynski,i) + suc.kulczynski[i]
-    dfNew$brayveg[i] <- dis_from_moment(mat.bray,i) + suc.brayveg[i]
-
-    # KL Divergence
-
-    dfNew$KLdiv[i] <- dis_from_moment(mat.KLdiv,i) + suc.KLdiv[i]
-
-    # Momentary Bray-Curtis dissimilarity by beta.part
-    # there appears to be some limitation on the bray.part on handling 1 ER stgy only
-    # will throw 0 and warning message if there is only 1 ER stgy
-    dfNew$bray[i] <- dis_from_moment(resbraypart$bray,i) + suc.bray[i]
-    dfNew$bray.bal[i] <- dis_from_moment(resbraypart$bray.bal,i) + suc.bray.bal[i]
-    dfNew$bray.gra[i] <- dis_from_moment(resbraypart$bray.gra,i) + suc.bray.gra[i]
-
+    mom.edist <- mom.edist+suc.edist
+    mom.manhattan  <-mom.manhattan+suc.manhattan
+    mom.chord <- mom.chord + suc.chord
+    mom.chisq  <- mom.chisq + suc.chisq
+    mom.logchord <- mom.logchord + suc.logchord
+    mom.hel <- mom.hel + suc.hel
+    mom.jaccard<- mom.jaccard + suc.jaccard
+    mom.kulczynski <- mom.kulczynski + suc.kulczynski
+    mom.brayveg <- mom.brayveg + suc.brayveg
+    mom.bray  <- mom.bray+suc.bray
+    mom.bray.bal <- mom.bray.bal+suc.bray.bal
+    mom.bray.gra <- mom.bray.gra+suc.bray.gra
+    mom.KLdiv <- mom.KLdiv+suc.KLdiv
   }
+
+
+  dfNew <- cbind(dfNew,edist = mom.edist)
+  dfNew <- cbind(dfNew,manhattan = mom.manhattan)
+  dfNew <- cbind(dfNew,chord = mom.chord)
+  dfNew <- cbind(dfNew,chisq = mom.chisq)
+  dfNew <- cbind(dfNew,logchord = mom.logchord)
+  dfNew <- cbind(dfNew,hel = mom.hel)
+  dfNew <- cbind(dfNew,jaccard = mom.jaccard)
+  dfNew <- cbind(dfNew,kulczynski = mom.kulczynski)
+  dfNew <- cbind(dfNew,brayveg = mom.brayveg)
+  dfNew <- cbind(dfNew,bray = mom.bray)
+  dfNew <- cbind(dfNew,bray.bal = mom.bray.bal)
+  dfNew <- cbind(dfNew,bray.gra = mom.bray.gra)
+  dfNew <- cbind(dfNew,KLdiv = mom.KLdiv)
 
   # Multi-site Bray-Curtis dissimilarity
   resBray<- beta.multi.abund(dfSim)
 
   #---- simOutput
-  #empirical auto correlation
 
-  simOutput <- data.frame(em_autocorr = NA)
-  simOutput$em_autocorr<-acf(dfSim[,"a"], plot = FALSE)$acf[2]
-  #has to exclude the blank column otherwise cor throws error
-  simOutput$em_cor<- tryCatch(mean(cor(dfSim[1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA)
-  simOutput$em_r <- tryCatch(sqrt(summary(lm(a ~ ., data = dfSim))$r.squared), error=function(err) NA)
-  simOutput$mean_sd <- mean(dfNew$sd[istart:n])
-  simOutput$mean_edist <- mean(dfNew$edist[istart:n])
-  simOutput$mean_manhattan <- mean(dfNew$manhattan[istart:n])
-  #simOutput$mean_chinormed <- mean(dfNew$chinormed)
-  simOutput$mean_hellinger <- mean(dfNew$hellinger[istart:n])
-  simOutput$mean_jaccard <- mean(dfNew$jaccard[istart:n])
-  simOutput$mean_chisq <- mean(dfNew$chisq[istart:n])
-  simOutput$mean_logchord <- mean(dfNew$logchord[istart:n])
-  simOutput$mean_chord <- mean(dfNew$chord[istart:n])
-  simOutput$mean_kulczynski <- mean(dfNew$kulczynski[istart:n])
-  simOutput$mean_KLdiv <- mean(dfNew$KLdiv[istart:n])
-  simOutput$mean_brayveg <- mean(dfNew$brayveg[istart:n])
-  simOutput$mean_bray <- mean(dfNew$bray[istart:n])
-  simOutput$mean_bray.bal <- mean(dfNew$bray.bal[istart:n])
-  simOutput$mean_bray.gra <- mean(dfNew$bray.gra[istart:n])
-  simOutput$multibray.bal <- resBray$beta.BRAY.BAL
-  simOutput$multibray.gra <- resBray$beta.BRAY.GRA
-  simOutput$multibray <- resBray$beta.BRAY
+  simOutput <- c(em_autocorr <- acf(dfSim[,"a"], plot = FALSE)$acf[2],
+                 em_cor<- tryCatch(mean(cor(dfSim[,1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[,1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA),
+                 em_r <- tryCatch(sqrt(summary(lm(a ~ ., data = as.data.frame(dfSim)))$r.squared), error=function(err) NA),
+                 mean_sd <- mean(dfNew[istart:n,"sd"]) ,
+                 mean_edist <- mean(dfNew[istart:n,"edist"]) ,
+                 mean_manhattan <-mean(dfNew[istart:n,"manhattan"]) ,
+                 mean_hellinger <- mean(dfNew[istart:n,"hel"]) ,
+                 mean_jaccard <- mean(dfNew[istart:n,"jaccard"]) ,
+                 mean_chisq <-mean(dfNew[istart:n,"chisq"]) ,
+                 mean_logchord <-mean(dfNew[istart:n,"logchord"]) ,
+                 mean_chord <-mean(dfNew[istart:n,"chord"]) ,
+                 mean_kulczynski <-mean(dfNew[istart:n,"kulczynski"]) ,
+                 mean_KLdiv <-mean(dfNew[istart:n,"KLdiv"]) ,
+                 mean_brayveg <- mean(dfNew[istart:n,"brayveg"]) ,
+                 mean_bray <-mean(dfNew[istart:n,"bray"]) ,
+                 mean_bray.bal <-mean(dfNew[istart:n,"bray.bal"]) ,
+                 mean_bray.gra <-mean(dfNew[istart:n,"bray.gra"]) ,
+                 multibray.bal <- resBray$beta.BRAY.BAL,
+                 multibray.gra <- resBray$beta.BRAY.GRA,
+                 multibray <- resBray$beta.BRAY
+                 )
 
-  return(simOutput)
+    return(simOutput)
 
 }
 
@@ -328,8 +325,7 @@ simulatecalculate <- function(i.siminput){
 
 #function to calculate the mean dissimilarity from one obs to all other obs, input dist
 dis_from_moment <- function(distobj,obs){
-  nobs <- n
-  return (mean(as.matrix(distobj)[obs,])*nobs/(nobs-1))
+  return (mean(as.matrix(distobj)[obs,])*n/(n-1))
 }
 
 dis_suc_vector <- function(distmat){
@@ -363,20 +359,42 @@ returnfit <- function(measure,dfreturn){
 # actually running the simulation
 # ====================================
 
-
-resOutput <- data.frame()
+resOutput <- c()
 for (i in 1:nrow(siminput)){
   resSim<-rdply(simn,simulatecalculate(i))
   if(length(resOutput)==0){
       resOutput <- resSim
     }else{
-      resOutput <- rbind.data.frame(resOutput,resSim)
+      resOutput <- rbind(resOutput,resSim)
   }
 }
+resOutput <- resOutput[2:ncol(resOutput)]
+colnames(resOutput) <- c("em_autocorr",
+                         "em_cor",
+                         "em_r",
+                         "mean_sd",
+                         "mean_edist",
+                         "mean_manhattan",
+                         "mean_hellinger",
+                         "mean_jaccard",
+                         "mean_chisq",
+                         "mean_logchord",
+                         "mean_chord",
+                         "mean_kulczynski",
+                         "mean_KLdiv",
+                         "mean_brayveg",
+                         "mean_bray",
+                         "mean_bray.bal",
+                         "mean_bray.gra",
+                         "multibray.bal",
+                         "multibray.gra",
+                         "multibray"
+)
 
 #bind the simulation parameters to result
 resInfo <- siminput[rep(seq_len(nrow(siminput)), each = simn), ]
 resOutput <- cbind(resInfo,resOutput)
+
 # ============
 # calculate the fit
 # ============
