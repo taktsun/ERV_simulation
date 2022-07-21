@@ -1,9 +1,10 @@
 library(betapart) # partitioned bray-curtis dissimilarity
-#library(dplyr)
 library(ppcor) # partial correlation
 library(vegan) # dissimilarity measures
 library(entropy) # KL divergence
 library(tsDyn) # package for VAR.sim
+library(foreach) #needed for parallelized for loop
+library(doParallel) #needed for parallelized for loop
 
 options(scipen=999)
 #======================
@@ -23,11 +24,12 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 2 #number of observation (time points per participant)
+n <- 10 #number of observation (time points per participant)
 simn <- 3 #number of simulations (participant)
 scalemin <- 0
 
 # other settings and testing conditions
+parallelized <- FALSE
 ERblankn <- 1 # number of "unused" (always 0) ER strategies. Always set >=1 (between-SD needs at least 2 to calculate)
 zerotransform <- TRUE # whether or not to replace 0 with 0.0001. TRUE recommended because 0 are not true 0
 rounding <- TRUE # whether or not round scores to integers
@@ -39,10 +41,11 @@ set.seed(1999)
 # varying simulation parameters
 siminput <- expand.grid(
   # higher meanshift, less rank changes occur, lower ERV expected
-  meanshift = c(0.0,2.0),
+  meanshift = c(0.0,2),
   # higher auto correlation, lower ERV expected
   autocorr = c(0.25,0.75),
-  correlation = c(0),
+  # correlation: expects no relationship
+  correlation = c(0.0,0.5),
   #  mean ER endorsement: expects no relationship
   ER_mean = c(0.2,0.3,0.4),
   # higher within-strategy SD, higher ERV expected
@@ -78,43 +81,43 @@ funsim <- function(i.siminput){
     signvector <- rep(signvector, each = n)
 
     # # ----------------------------------------------------
-    # # Using the VAR.sim method...
-    # # VAR.sim must create multivariate time series.
-    # if (ERn >1){
-    #   tmpERn <- ERn
-    # }else{
-    #   tmpERn <- 2
-    # }
-    # CV <- diag(1, tmpERn,tmpERn)
-    # CV[CV == 0] <- correlation
-    # B1 <- diag(autocorr, tmpERn,tmpERn)
-    # # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
-    # if (ERn >1){
-    #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
-    # }else{
-    #   # VAR.sim must create multivariate time series;
-    #   # cut back to 1 col
-    #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
-    # }
+    # Using the VAR.sim method...
+    # VAR.sim must create multivariate time series.
+    if (ERn >1){
+      tmpERn <- ERn
+    }else{
+      tmpERn <- 2
+    }
+    CV <- diag(1, tmpERn,tmpERn)
+    CV[CV == 0] <- correlation
+    B1 <- diag(autocorr, tmpERn,tmpERn)
+    # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
+    if (ERn >1){
+      dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
+    }else{
+      # VAR.sim must create multivariate time series;
+      # cut back to 1 col
+      dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
+    }
     # # ----------------------------------------------------
 
 
   # ----------------------------------------------------
-  # Using mvrnorm and meanshift to create strategies
-  # Generate main strategy: by mvrnorm.
-  # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
-  tmp.r <- matrix(autocorr, n, n)
-  tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
-  tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
-  dfSim <- tmp.dist
-
-  #Create other strategies
-  if(ERn>1){
-    for (i in 2:ERn){
-      tmp.ER <-  (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)
-      dfSim <- cbind(dfSim, tmp.ER)
-     }
-  }
+  # # Using mvrnorm and meanshift to create strategies
+  # # Generate main strategy: by mvrnorm.
+  # # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
+  # tmp.r <- matrix(autocorr, n, n)
+  # tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
+  # tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
+  # dfSim <- tmp.dist
+  #
+  # #Create other strategies
+  # if(ERn>1){
+  #   for (i in 2:ERn){
+  #     tmp.ER <-  (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)
+  #     dfSim <- cbind(dfSim, tmp.ER)
+  #    }
+  # }
   # ----------------------------------------------------
 
 
@@ -363,16 +366,29 @@ returnfit <- function(measure,dfreturn,testtype){
 # actually running the simulation
 # ====================================
 
+if (parallelized){
+  #setup parallel backend
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1) #not to overload your computer
+  registerDoParallel(cl)
 
-resOutput <- c()
-for (i in 1:nrow(siminput)){
-  resSim<-t(replicate(simn,simulatecalculate(i)))
-  if(length(resOutput)==0){
-      resOutput <- resSim
-    }else{
-      resOutput <- rbind(resOutput,resSim)
+  resOutput <- foreach(i=1:nrow(siminput),
+                       .combine=rbind,
+                       .packages = c("tsDyn","vegan","entropy","betapart")) %dopar% {
+    resSim <- t(replicate(simn,simulatecalculate(i)))
+    resSim #Equivalent to resOutput = rbind(resOutput, resSim)
+  }
+  #stop parallel cluster
+  stopCluster(cl)
+}else{
+  # for loop method
+  resOutput <- t(replicate(simn,simulatecalculate(1)))
+  for (i in 2:nrow(siminput)){
+    resSim<-t(replicate(simn,simulatecalculate(i)))
+    resOutput <- rbind(resOutput,resSim)
   }
 }
+
 colnames(resOutput) <- c("em_autocorr",
                          "em_cor",
                          "em_r",
