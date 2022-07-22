@@ -172,8 +172,8 @@ funcal <- function(i.siminput,dfSim){
 
   dfNew <- dfSim
 
-  # Momentary SD
-  dfNew <- cbind(dfNew,sd = apply(dfSim,1,sd))
+  # Momentary SD [throws error if there's only 1 strategy]
+  dfNew <- cbind(dfNew,sd = tryCatch(apply(dfSim,1,sd), error=function(err) NA))
 
   # standardize
   dfnorm_chord <- decostand(dfSim,"norm")
@@ -290,22 +290,22 @@ funcal <- function(i.siminput,dfSim){
 
   #---- simOutput
 
-  simOutput <- c(acf(dfSim[,"a"], plot = FALSE)$acf[2], #em_autocorr
+  simOutput <- c(acf(dfSim[,1], plot = FALSE)$acf[2], #em_autocorr; error when only 1 strategy
                  tryCatch(mean(cor(dfSim[,1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[,1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA),
                  tryCatch(sqrt(summary(lm(a ~ ., data = as.data.frame(dfSim)))$r.squared), error=function(err) NA),
-                 mean(dfNew[istart:n,"sd"]) ,
+                 mean(dfNew[istart:n,"sd"]) , # NA at 1 strategy
                  mean(dfNew[istart:n,"euclidean"]) ,
                  mean(dfNew[istart:n,"manhattan"]) ,
-                 mean(dfNew[istart:n,"hellinger"]) ,
+                 mean(dfNew[istart:n,"hellinger"]) , # zero at 1 strategy
                  mean(dfNew[istart:n,"jaccard"]) ,
-                 mean(dfNew[istart:n,"chisq"]) ,
-                 mean(dfNew[istart:n,"logchord"]) ,
-                 mean(dfNew[istart:n,"chord"]) ,
+                 mean(dfNew[istart:n,"chisq"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"logchord"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"chord"]) , # zero at 1 strategy
                  mean(dfNew[istart:n,"kulczynski"]) ,
-                 mean(dfNew[istart:n,"KLdiv"]) ,
+                 mean(dfNew[istart:n,"KLdiv"]) , # zero at 1 strategy
                  mean(dfNew[istart:n,"brayveg"]) ,
                  mean(dfNew[istart:n,"braypart.all"]) ,
-                 mean(dfNew[istart:n,"braypart.bal"]) ,
+                 mean(dfNew[istart:n,"braypart.bal"]) , # zero at 1 strategy
                  mean(dfNew[istart:n,"braypart.gra"]) ,
                  resBray$beta.BRAY.BAL,
                  resBray$beta.BRAY.GRA,
