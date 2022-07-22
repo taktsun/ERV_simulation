@@ -25,12 +25,12 @@ options(scipen=999)
 #======================
 
 # study design
-n <- 100 #number of observation (time points per participant)
+n <- 6 #number of observation (time points per participant)
 simn <- 1 #number of simulations (participant)
 scalemin <- 0
 
 # other settings and testing conditions
-parallelized <- TRUE
+parallelized <- FALSE # TRUE for faster speed, FALSE if a reproducable result is wanted
 ERblankn <- 1 # number of "unused" (always 0) ER strategies. Always set >=1 (between-SD needs at least 2 to calculate)
 zerotransform <- TRUE # whether or not to replace 0 with 0.0001. TRUE recommended because 0 are not true 0
 rounding <- TRUE # whether or not round scores to integers
@@ -126,10 +126,7 @@ funsim <- function(i.siminput){
 
   #Create "blank" strategies
   if(ERblankn>0){
-    dfSim<- cbind(dfSim,matrix(0,n,ERblankn,dimnames = list(1:n,letters[(ERn+1):(ERn+ERblankn)])))
-    # for (i in (ERn+1):(ERn+ERblankn)){
-    #   dfSim[letters[i]] <- 0
-    # }
+    dfSim<- cbind(dfSim,matrix(0,n,ERblankn))
   }
   colnames(dfSim) <- letters[1:(ERn+ERblankn)]
 
@@ -273,45 +270,46 @@ funcal <- function(i.siminput,dfSim){
   }
 
 
-  dfNew <- cbind(dfNew,euclidean = mom.euclidean)
-  dfNew <- cbind(dfNew,manhattan = mom.manhattan)
-  dfNew <- cbind(dfNew,chord = mom.chord)
-  dfNew <- cbind(dfNew,chisq = mom.chisq)
-  dfNew <- cbind(dfNew,logchord = mom.logchord)
-  dfNew <- cbind(dfNew,hellinger = mom.hellinger)
-  dfNew <- cbind(dfNew,jaccard = mom.jaccard)
-  dfNew <- cbind(dfNew,kulczynski = mom.kulczynski)
-  dfNew <- cbind(dfNew,brayveg = mom.brayveg)
-  dfNew <- cbind(dfNew,braypart.all = mom.braypart.all)
-  dfNew <- cbind(dfNew,braypart.bal = mom.braypart.bal)
-  dfNew <- cbind(dfNew,braypart.gra = mom.braypart.gra)
-  dfNew <- cbind(dfNew,KLdiv = mom.KLdiv)
+  dfNew <- cbind(dfNew,euclidean = mom.euclidean,
+                 manhattan = mom.manhattan,
+                 chord = mom.chord,
+                 chisq = mom.chisq,
+                 logchord = mom.logchord,
+                 hellinger = mom.hellinger,
+                 jaccard = mom.jaccard,
+                 kulczynski = mom.kulczynski,
+                 brayveg = mom.brayveg,
+                 braypart.all = mom.braypart.all,
+                 braypart.bal = mom.braypart.bal,
+                 braypart.gra = mom.braypart.gra,
+                 KLdiv = mom.KLdiv
+                 )
 
   # Multi-site Bray-Curtis dissimilarity
   resBray<- beta.multi.abund(dfSim)
 
   #---- simOutput
 
-  simOutput <- c(em_autocorr <- acf(dfSim[,"a"], plot = FALSE)$acf[2],
-                 em_cor<- tryCatch(mean(cor(dfSim[,1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[,1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA),
-                 em_r <- tryCatch(sqrt(summary(lm(a ~ ., data = as.data.frame(dfSim)))$r.squared), error=function(err) NA),
-                 mean_sd <- mean(dfNew[istart:n,"sd"]) ,
-                 mean_euclidean <- mean(dfNew[istart:n,"euclidean"]) ,
-                 mean_manhattan <-mean(dfNew[istart:n,"manhattan"]) ,
-                 mean_hellinger <- mean(dfNew[istart:n,"hellinger"]) ,
-                 mean_jaccard <- mean(dfNew[istart:n,"jaccard"]) ,
-                 mean_chisq <-mean(dfNew[istart:n,"chisq"]) ,
-                 mean_logchord <-mean(dfNew[istart:n,"logchord"]) ,
-                 mean_chord <-mean(dfNew[istart:n,"chord"]) ,
-                 mean_kulczynski <-mean(dfNew[istart:n,"kulczynski"]) ,
-                 mean_KLdiv <-mean(dfNew[istart:n,"KLdiv"]) ,
-                 mean_brayveg <- mean(dfNew[istart:n,"brayveg"]) ,
-                 mean_bray.all <-mean(dfNew[istart:n,"braypart.all"]) ,
-                 mean_bray.bal <-mean(dfNew[istart:n,"braypart.bal"]) ,
-                 mean_bray.gra <-mean(dfNew[istart:n,"braypart.gra"]) ,
-                 multibray.bal <- resBray$beta.BRAY.BAL,
-                 multibray.gra <- resBray$beta.BRAY.GRA,
-                 multibray.all <- resBray$beta.BRAY
+  simOutput <- c(acf(dfSim[,"a"], plot = FALSE)$acf[2], #em_autocorr
+                 tryCatch(mean(cor(dfSim[,1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[,1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA),
+                 tryCatch(sqrt(summary(lm(a ~ ., data = as.data.frame(dfSim)))$r.squared), error=function(err) NA),
+                 mean(dfNew[istart:n,"sd"]) ,
+                 mean(dfNew[istart:n,"euclidean"]) ,
+                 mean(dfNew[istart:n,"manhattan"]) ,
+                 mean(dfNew[istart:n,"hellinger"]) ,
+                 mean(dfNew[istart:n,"jaccard"]) ,
+                 mean(dfNew[istart:n,"chisq"]) ,
+                 mean(dfNew[istart:n,"logchord"]) ,
+                 mean(dfNew[istart:n,"chord"]) ,
+                 mean(dfNew[istart:n,"kulczynski"]) ,
+                 mean(dfNew[istart:n,"KLdiv"]) ,
+                 mean(dfNew[istart:n,"brayveg"]) ,
+                 mean(dfNew[istart:n,"braypart.all"]) ,
+                 mean(dfNew[istart:n,"braypart.bal"]) ,
+                 mean(dfNew[istart:n,"braypart.gra"]) ,
+                 resBray$beta.BRAY.BAL,
+                 resBray$beta.BRAY.GRA,
+                 resBray$beta.BRAY
                  )
 
     return(simOutput)
@@ -337,8 +335,6 @@ returnfit <- function(measure,dfreturn,testtype){
                        autocorr = dfreturn$autocorr,
                        meanshift = dfreturn$meanshift,
                        correlation = dfreturn$correlation,
-                       # emautocorr = dfreturn$em_autocorr,
-                       # emcor = dfreturn$em_r,
                        ER_mean = dfreturn$ER_mean,
                        ER_withinSD = dfreturn$ER_withinSD,
                        ERn = dfreturn$ERn,
