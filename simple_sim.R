@@ -1,6 +1,6 @@
 library(betapart)
-library(plyr)
-library(tidyverse)
+# library(plyr)
+# library(tidyverse)
 library(ppcor)
 library(vegan)
 library(entropy)
@@ -42,13 +42,14 @@ siminput <- expand.grid(
   # higher meanshift, less rank changes occur, lower ERV expected
   meanshift = c(0.0,2.0),
   # higher auto correlation, lower ERV expected
-  autocorr = c(0.25,0.75),
+  autoregressive = c(0.25,0.75),
   #  mean ER endorsement: expects no relationship
   ER_mean = c(0.2,0.3,0.4),
   # higher within-strategy SD, higher ERV expected
   ER_withinSD = c(0.14,0.20,0.26), #c(0.15,0.35),
   # Number of ER strategies: expects no relationship
-  ERn = c(1,2,5),
+  # CJ: Minimum ER to 2 right now, some debugging necessary for 1
+  ERn = c(2,3,5),
   # max of scale: expects no relationship
   scalemax = c(10,100)
 )
@@ -57,92 +58,58 @@ siminput <- expand.grid(
 # ==================================
 # define functions
 # ==================================
-funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
-    simOutput <- data.frame(n = n, autocorr = autocorr, meanshift = meanshift,
-                          ER_mean = ER_mean,
-                          ER_withinSD = ER_withinSD,
-                          ERn = ERn,
-                          scalemax = scalemax)
+simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
+  # Assign autoregressive regression parameter to diagonal
+  Bmat <- diag(autoregressive, ERn)
+  # Assign cross-strategy regression coefficient to off-diagonal
+  Bmat[lower.tri(Bmat)|upper.tri(Bmat)] <- cross
+  # Generate data
+  out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = diag(ER_withinSD, nrow(Bmat)))
+  # Center to zero
+  out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
+  # Center to desired mean
+  out + matrix(ER_mean, ncol = ncol(out), nrow = nrow(out))
+}
 
+funsim <- function(autoregressive,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   #---- simulating ER strategies
-
-  dfSim <- data.frame(a = 1:n)
-  # Generate main strategy: by mvrnorm.
-  # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
-  tmp.r <- matrix(autocorr, n, n)
-  tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
-  tmp.dist <- mvrnorm(1, rep(0,n), tmp.r)
-  dfSim$a <- tmp.dist * ER_withinSD*scalemax + ER_mean*scalemax
-
-  #Create other strategies
-  if(ERn>1){
-    for (i in 2:ERn){
-      dfSim[letters[i]] <- scalemax*(   ER_mean +
-                                          # varies relative to ratings of 1st ER
-                                          (tmp.dist + rnorm(n,0,1))*0.5*sqrt(2)*ER_withinSD +
-                                         # mean shift, random direction per person
-                                         (sign(rnorm(1))*meanshift*ER_withinSD)
-                                     )
-    }
-  }
-
-  #Create "blank" strategies
-  if(ERblankn>0){
-    for (i in (ERn+1):(ERn+ERblankn)){
-      dfSim[letters[i]] <- 0
-    }
-  }
-
-  #limit the timeseries to min/max
-  # CJ: Probably remove this, because it relates to measurement
-  # CJ: But in general, boolean indexing is faster than ifelse()
-  dfSim[] <- apply(dfSim, 2, function(x) ifelse(x < scalemin , scalemin, x))
-  dfSim[] <- apply(dfSim, 2, function(x) ifelse(x > scalemax , scalemax, x))
-
-  # testing purpose: first row to zero
-  if(firstrowzero){
-    dfSim[1,] <- 0
-  }
-
-  # testing purpose: non overlapping ER strategy use
-  if(testnonoverlap & ((ERn+ERblankn)>1)){
-    dfSim[1,1] <- 0
-    dfSim[2,2] <- 0
-  }
-
-  # rounding
-  # CJ: This relates to measurement, so remove for now
-  if(rounding){
-    dfSim[] <- round(dfSim,0)
-  }
-
-  # replace 0 with 0.0001 because 0 are not true zero (interval scale not ratio scale)
-  # CJ: This problem will probably go away if you're no longer rounding
-  # CJ: Instead of adding a small constant here, you can either:
-  # CJ: Create a wrapper for your metric functions that adds a small constant if necessary, OR create a wrapper that returns NA if the calculation fails
-  if (zerotransform){
-  dfSim[dfSim == 0] <- 0.0001
-  }
+  cl <- match.call()
+  cl[[1]] <- quote(simulate_data)
+  dfSim <- eval.parent(cl)
 
   #---- ER Variability candidate indices
-
-  dfNew <- dfSim
+  # CJ: Avoid assignment and making copies of things
+  # dfNew <- dfSim
 
   # Momentary SD
-  dfNew$sd <- base::apply(dfSim,1,FUN = sd)
+  mom_sd <- base::apply(dfSim,1,FUN = sd)
 
 
   # standardize
-  dfnorm_chord <- decostand(dfSim,"norm")
-  dfnorm_logchord <- decostand(log1p(dfSim),"norm")
-  dfnorm_hel <- decostand(dfSim,"hel")
-  dfnorm_prob <- decostand(dfSim,"total")
+  # CJ: Avoid unnecessary dependencies; this is just basic algebra, so we don't need decostand. It's much slower
+  #dfnorm_chord1 <- decostand(dfSim,"normalize")
+  dfnorm_chord1 <- dfSim / sqrt(rowSums(dfSim^2))
+
+  # dfnorm_logchord <- decostand(log1p(dfSim),"norm")
+  dfSim_log1p <- log1p(dfSim)
+  dfnorm_logchord <- dfSim_log1p / sqrt(rowSums(dfSim_log1p^2))
+
+  # dfnorm_prob <- decostand(dfSim,"total")
+  dfSim_rowsum <- rowSums(dfSim)
+  dfSim_min <- min(dfSim)
+  dfnorm_prob <- dfSim / pmax(dfSim_min, dfSim_rowsum)
+
+  # dfnorm_hel <- decostand(dfSim,"hel")
+  dfnorm_hel <- sqrt(dfnorm_prob)
+
+  # CJ: Not sure what happens here tbh
   if (ERblankn == 0  | zerotransform == TRUE){
-    dfnorm_chi <- decostand(dfSim,"chi.square")
+    # dfnorm_chi <- decostand(dfSim,"chi.square")
+    dfnorm_chi <-   sqrt(sum(dfSim)) * dfSim/outer(pmax(dfSim_min, dfSim_rowsum), sqrt(colSums(dfSim)))
   }
 
   # KL divergence
-
+  # CJ: Not sure what happens here and if it's correct. Either way, growing a vector in nested for-loops is very slow, so try to avoid that. The operation here can probably be executed as a single matrix algebra statement
   tempdist <- c()
   for (k in 1:(nrow(dfnorm_prob)-1)){
     for (j in (k+1):nrow(dfnorm_prob)){
@@ -155,9 +122,14 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   mat.KLdiv[upper.tri(mat.KLdiv)] <- t(mat.KLdiv)[upper.tri(mat.KLdiv)]
 
   # Other matrices
+  # CJ: I'm not sure how we should summarize the Euclidean distance,
+  #     so here I'm taking the median of the row-to-row distance
+  mat.euc <- median(diag(as.matrix(dist(dfSim))[-1, -nrow(dfSim)]))
 
-  mat.euc <- dist(dfSim)
-  mat.manhattan <- vegdist(dfSim,method = "manhattan")
+  #mat.manhattan <- vegdist(dfSim,method = "manhattan")
+  # CJ: Base R dist() has manhattan too!
+  mat.euc <- median(diag(as.matrix(dist(dfSim, method = "manhattan"))[-1, -nrow(dfSim)]))
+  # CJ: Same principle applies, we probably don't need vegdist
   mat.chord <- vegdist(dfnorm_chord, method = "euc") # or vegdist(dfSim,method="chord")
   mat.logchord <- vegdist(dfnorm_logchord, method = "euc")
   mat.chisq <- vegdist(dfnorm_chi, method = "euc") # or vegdist(dfSim,method="chisq")
@@ -273,10 +245,11 @@ funsim <- function(autocorr,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
   }
 
   #---- simOutput
+  # CJ: Try to simplify this and just output a vector with all of the metrics
   if ((ERn+ERblankn)>1){
   tempmodel <- lm (a ~ ., data = dfSim)
   }
-  simOutput$em_autocorr<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
+  simOutput$em_autoregressive<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
   simOutput$em_cor<- ifelse(ERn > 1,mean(cor(dfSim)[1,2:length(cor(dfSim))^0.5]),NA) #empirical correlation
   simOutput$em_r <- ifelse((ERn+ERblankn) > 1,sqrt(summary(tempmodel)$r.squared),NA)
   simOutput$mean_sd <- mean(dfNew$sd[istart:n])
@@ -311,9 +284,9 @@ dis_from_moment <- function(distobj,obs){
 # function to return partial correlations ofdissimlarity measures to the 3 parameters
 returnfit <- function(measure,dfreturn){
   dftemp <- data.frame(measure = dfreturn[,measure],
-                       autocorr = dfreturn$autocorr,
+                       autoregressive = dfreturn$autoregressive,
                        meanshift = dfreturn$meanshift,
-                       # emautocorr = dfreturn$em_autocorr,
+                       # emautoregressive = dfreturn$em_autoregressive,
                        # emcor = dfreturn$em_r,
                        ER_mean = dfreturn$ER_mean,
                        ER_withinSD = dfreturn$ER_withinSD,
@@ -337,7 +310,7 @@ returnfit <- function(measure,dfreturn){
 
 resOutput <- data.frame()
 for (i in 1:nrow(siminput)){
-  resSim<-rdply(simn,funsim(siminput$autocorr[i],siminput$meanshift[i],
+  resSim<-rdply(simn,funsim(siminput$autoregressive[i],siminput$meanshift[i],
                             siminput$ER_mean[i],
                             siminput$ER_withinSD[i],
                             siminput$ERn[i],
