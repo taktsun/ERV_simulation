@@ -55,6 +55,12 @@ siminput <- expand.grid(
 )
 
 
+# Predetermine seed values and store siminput -----------------------------
+
+set.seed(1985)
+siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
+saveRDS(siminput, file = "siminput.RData")
+
 # ==================================
 # define functions
 # ==================================
@@ -71,12 +77,47 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_wit
   out + matrix(ER_mean, ncol = ncol(out), nrow = nrow(out))
 }
 
-funsim <- function(autoregressive,meanshift, ER_mean, ER_withinSD, ERn, scalemax){
-  #---- simulating ER strategies
-  cl <- match.call()
-  cl[[1]] <- quote(simulate_data)
-  dfSim <- eval.parent(cl)
+source("metric_functions.R")
 
+# prepare parallel processing
+library(doSNOW)
+library(parallel)
+nclust <- parallel::detectCores()
+cl <- makeCluster(nclust)
+registerDoSNOW(cl)
+
+# run simulation
+time_start <- Sys.time()
+tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn"), .combine = rbind) %dopar% {
+  # Set seed
+  suppressMessages(attach(siminput[rownum, ]))
+  set.seed(seed)
+
+  # Simulate data
+  df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive, cross = cross, ER_withinSD = ER_withinSD, ER_mean = ER_mean)
+
+  out <- c(
+      metric_mssd(df),
+      metric_mean_euclidean(df)
+    )
+  # CJ: If the sim takes very long or uses a lot of memory, print to text files.
+  # CJ: If not, just return the output.
+  # CJ: We have to see which works best when we start running a larger chunk!
+  # write.table(x = t(out), file = sprintf("results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
+  # NULL
+  out
+}
+end_time <- Sys.time()
+#Close cluster
+stopCluster(cl)
+
+time_per_row <- as.numeric(end_time - time_start) / nrow(siminput)
+writeLines(paste0("Time per row: ", time_per_row), "time_per_row.txt")
+
+# End of simulation -------------------------------------------------------
+stop("End of simulation")
+
+{
   #---- ER Variability candidate indices
   # CJ: Avoid assignment and making copies of things
   # dfNew <- dfSim
