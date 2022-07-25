@@ -38,10 +38,11 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_wit
   # Assign autoregressive regression parameter to diagonal
   Bmat <- diag(autoregressive, ERn)
   # Assign cross-strategy regression coefficient to off-diagonal
-  Bmat[lower.tri(Bmat)|upper.tri(Bmat)] <- cross
+  Bmat[Bmat == 0] <- cross
   # Generate data
   out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = diag(ER_withinSD, nrow(Bmat)))
-  # Center to zero
+  # Center to zero; this is to facilitate your argument ER_mean, but I'm not
+  # convinced that this is meaningful
   out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
   # Center to desired mean
   out + matrix(ER_mean, ncol = ncol(out), nrow = nrow(out))
