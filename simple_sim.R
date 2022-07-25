@@ -1,10 +1,10 @@
-library(betapart)
-# library(plyr)
-# library(tidyverse)
-library(ppcor)
-library(vegan)
-library(entropy)
-library(faux)
+library(betapart) # partitioned bray-curtis dissimilarity
+library(ppcor) # partial correlation
+library(vegan) # dissimilarity measures
+library(entropy) # KL divergence
+library(tsDyn) # package for VAR.sim
+library(foreach) #needed for parallelized for loop
+library(doParallel) #needed for parallelized for loop
 
 options(scipen=999)
 #======================
@@ -13,22 +13,24 @@ options(scipen=999)
 
 # 1. ERn = 1 case can be handled by adding a blank strategy (set ERblankn>=1)
 # 2. Explore if there's a way out other than choosing between an unwanted
-    #-ve association with ER_mean or +ve association with scalemax.
-    #E.g., Extra adjustment, say, add ERn and scalemax to denominator of Euclidean distance?
+#-ve association with ER_mean or +ve association with scalemax.
+#E.g., Extra adjustment, say, add ERn and scalemax to denominator of Euclidean distance?
 # 3. Produce data visualizations to see if relationships are linear or not
 # 4. Add RQA
 # 5. Handle missing rows (in empirical dataset)
+# 6. In VAR.sim, higher autocorrelation inflates within-strategy SD
 
 #======================
 # simulation setup
 #======================
 
 # study design
-n <- 50 #number of observation (time points per participant)
+n <- 6 #number of observation (time points per participant)
 simn <- 1 #number of simulations (participant)
 scalemin <- 0
 
-# other settings andtesting conditions
+# other settings and testing conditions
+parallelized <- FALSE # TRUE for faster speed, FALSE if a reproducable result is wanted
 ERblankn <- 1 # number of "unused" (always 0) ER strategies. Always set >=1 (between-SD needs at least 2 to calculate)
 zerotransform <- TRUE # whether or not to replace 0 with 0.0001. TRUE recommended because 0 are not true 0
 rounding <- TRUE # whether or not round scores to integers
@@ -40,117 +42,150 @@ set.seed(1999)
 # varying simulation parameters
 siminput <- expand.grid(
   # higher meanshift, less rank changes occur, lower ERV expected
-  meanshift = c(0.0,2.0),
+  meanshift = c(0.0,2),
   # higher auto correlation, lower ERV expected
-  autoregressive = c(0.25,0.75),
+  autocorr = c(0.25,0.75),
+  # correlation: expects no relationship
+  correlation = c(0.0),
   #  mean ER endorsement: expects no relationship
   ER_mean = c(0.2,0.3,0.4),
   # higher within-strategy SD, higher ERV expected
   ER_withinSD = c(0.14,0.20,0.26), #c(0.15,0.35),
   # Number of ER strategies: expects no relationship
-  # CJ: Minimum ER to 2 right now, some debugging necessary for 1
-  ERn = c(2,3,5),
+  ERn = c(1,2,5),
   # max of scale: expects no relationship
   scalemax = c(10,100)
 )
 
 
-# Predetermine seed values and store siminput -----------------------------
-
-set.seed(1985)
-siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
-saveRDS(siminput, file = "siminput.RData")
-
 # ==================================
 # define functions
 # ==================================
-simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
-  # Assign autoregressive regression parameter to diagonal
-  Bmat <- diag(autoregressive, ERn)
-  # Assign cross-strategy regression coefficient to off-diagonal
-  Bmat[lower.tri(Bmat)|upper.tri(Bmat)] <- cross
-  # Generate data
-  out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = diag(ER_withinSD, nrow(Bmat)))
-  # Center to zero
-  out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
-  # Center to desired mean
-  out + matrix(ER_mean, ncol = ncol(out), nrow = nrow(out))
+funsim <- function(i.siminput){
+  autocorr = siminput$autocorr[i.siminput]
+  meanshift = siminput$meanshift[i.siminput]
+  correlation = siminput$correlation[i.siminput]
+  ER_mean = siminput$ER_mean[i.siminput]
+  ER_withinSD = siminput$ER_withinSD[i.siminput]
+  ERn = siminput$ERn[i.siminput]
+  scalemax = siminput$scalemax[i.siminput]
+
+
+  #---- simulating ER strategies
+  # create an alternating -1,1,... vector for mean-shifting other strategies
+  signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
+  signvector[1] <- 0
+  signvector <- signvector[1:ERn]
+  # adjust it so that the overall mean (of all strategies) remain as first specified
+  signvector <- signvector-sum(signvector)/ERn
+  # repeat signvector n times to fit the # of observations
+  signvector <- rep(signvector, each = n)
+
+  # # ----------------------------------------------------
+  # # Using the VAR.sim method...(can specify correlation, autocorrelation, cross-lagged rx)
+  # # VAR.sim must create multivariate time series.
+  # # VAR.sim inflates SD when autocorrelation is high,
+  # # counters-off the negative association effect between autocorrelation and ERV
+  #
+  # if (ERn >1){
+  #   tmpERn <- ERn
+  # }else{
+  #   tmpERn <- 2
+  # }
+  # CV <- diag(1, tmpERn,tmpERn)
+  # CV[CV == 0] <- correlation
+  # B1 <- diag(autocorr, tmpERn,tmpERn)
+  # # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
+  # if (ERn >1){
+  #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
+  # }else{
+  #   # VAR.sim must create multivariate time series;
+  #   # cut back to 1 col
+  #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
+  # }
+  # # ----------------------------------------------------
+
+  # ----------------------------------------------------
+  # Using mvrnorm and meanshift to create strategies
+  # Generate main strategy: by mvrnorm.
+  # (because by arima.sim the SD is higher than specified and by the old way the SD is lower than specified.)
+  tmp.r <- matrix(autocorr, n, n)
+  tmp.r <- tmp.r^abs(row(tmp.r)-col(tmp.r))
+  tmp.dist <- mvrnorm(ERn, rep(0,n), tmp.r)
+  if(ERn>1) tmp.dist <- t(tmp.dist)
+  dfSim <- tmp.dist
+
+  # ----------------------------------------------------
+
+
+  # apply meanshift adjustment
+  dfSim <- dfSim + signvector*meanshift
+  # Scale up the simulated data to match the mean, SD and scalemax parameters
+  dfSim <- dfSim*ER_withinSD*scalemax
+  dfSim <- dfSim+ER_mean*scalemax
+
+  #Create "blank" strategies
+  if(ERblankn>0){
+    dfSim<- cbind(dfSim,matrix(0,n,ERblankn))
+  }
+  colnames(dfSim) <- letters[1:(ERn+ERblankn)]
+
+
+  #limit the timeseries to min/max
+  # CJ: Probably remove this, because it relates to measurement
+  # CJ: But in general, boolean indexing is faster than ifelse()
+  dfSim[dfSim < scalemin] <- scalemin
+  dfSim[dfSim > scalemax] <- scalemax
+
+
+  # testing purpose: first row to zero
+  if(firstrowzero){
+    dfSim[1,] <- 0
+  }
+
+  # testing purpose: non overlapping ER strategy use
+  if(testnonoverlap & ((ERn+ERblankn)>1)){
+    dfSim[1,1] <- 0
+    dfSim[2,2] <- 0
+  }
+
+  # rounding
+  # CJ: This relates to measurement, so remove for now
+  if(rounding){
+    dfSim <- round(dfSim,0)
+  }
+
+  # replace 0 with 0.0001 because 0 are not true zero (interval scale not ratio scale)
+  # CJ: This problem will probably go away if you're no longer rounding
+  # CJ: Instead of adding a small constant here, you can either:
+  # CJ: Create a wrapper for your metric functions that adds a small constant if necessary, OR create a wrapper that returns NA if the calculation fails
+  if (zerotransform){
+    dfSim[dfSim == 0] <- 0.0001
+  }
+
+  return(dfSim)
 }
 
-source("metric_functions.R")
+funcal <- function(i.siminput,dfSim){
 
-# prepare parallel processing
-library(doSNOW)
-library(parallel)
-nclust <- parallel::detectCores()
-cl <- makeCluster(nclust)
-registerDoSNOW(cl)
-
-# run simulation
-time_start <- Sys.time()
-tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn"), .combine = rbind) %dopar% {
-  # Set seed
-  suppressMessages(attach(siminput[rownum, ]))
-  set.seed(seed)
-
-  # Simulate data
-  df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive, cross = cross, ER_withinSD = ER_withinSD, ER_mean = ER_mean)
-
-  out <- c(
-      metric_mssd(df),
-      metric_mean_euclidean(df)
-    )
-  # CJ: If the sim takes very long or uses a lot of memory, print to text files.
-  # CJ: If not, just return the output.
-  # CJ: We have to see which works best when we start running a larger chunk!
-  # write.table(x = t(out), file = sprintf("results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
-  # NULL
-  out
-}
-end_time <- Sys.time()
-#Close cluster
-stopCluster(cl)
-
-time_per_row <- as.numeric(end_time - time_start) / nrow(siminput)
-writeLines(paste0("Time per row: ", time_per_row), "time_per_row.txt")
-
-# End of simulation -------------------------------------------------------
-stop("End of simulation")
-
-{
   #---- ER Variability candidate indices
-  # CJ: Avoid assignment and making copies of things
-  # dfNew <- dfSim
 
-  # Momentary SD
-  mom_sd <- base::apply(dfSim,1,FUN = sd)
+  dfNew <- dfSim
 
+  # Momentary SD [throws error if there's only 1 strategy]
+  dfNew <- cbind(dfNew,sd = tryCatch(apply(dfSim,1,sd), error=function(err) NA))
 
   # standardize
-  # CJ: Avoid unnecessary dependencies; this is just basic algebra, so we don't need decostand. It's much slower
-  #dfnorm_chord1 <- decostand(dfSim,"normalize")
-  dfnorm_chord1 <- dfSim / sqrt(rowSums(dfSim^2))
-
-  # dfnorm_logchord <- decostand(log1p(dfSim),"norm")
-  dfSim_log1p <- log1p(dfSim)
-  dfnorm_logchord <- dfSim_log1p / sqrt(rowSums(dfSim_log1p^2))
-
-  # dfnorm_prob <- decostand(dfSim,"total")
-  dfSim_rowsum <- rowSums(dfSim)
-  dfSim_min <- min(dfSim)
-  dfnorm_prob <- dfSim / pmax(dfSim_min, dfSim_rowsum)
-
-  # dfnorm_hel <- decostand(dfSim,"hel")
-  dfnorm_hel <- sqrt(dfnorm_prob)
-
-  # CJ: Not sure what happens here tbh
+  dfnorm_chord <- decostand(dfSim,"norm")
+  dfnorm_logchord <- decostand(log1p(dfSim),"norm")
+  dfnorm_hellinger <- decostand(dfSim,"hellinger")
+  dfnorm_prob <- decostand(dfSim,"total")
   if (ERblankn == 0  | zerotransform == TRUE){
-    # dfnorm_chi <- decostand(dfSim,"chi.square")
-    dfnorm_chi <-   sqrt(sum(dfSim)) * dfSim/outer(pmax(dfSim_min, dfSim_rowsum), sqrt(colSums(dfSim)))
+    dfnorm_chi <- decostand(dfSim,"chi.square")
   }
 
   # KL divergence
-  # CJ: Not sure what happens here and if it's correct. Either way, growing a vector in nested for-loops is very slow, so try to avoid that. The operation here can probably be executed as a single matrix algebra statement
+
   tempdist <- c()
   for (k in 1:(nrow(dfnorm_prob)-1)){
     for (j in (k+1):nrow(dfnorm_prob)){
@@ -163,182 +198,158 @@ stop("End of simulation")
   mat.KLdiv[upper.tri(mat.KLdiv)] <- t(mat.KLdiv)[upper.tri(mat.KLdiv)]
 
   # Other matrices
-  # CJ: I'm not sure how we should summarize the Euclidean distance,
-  #     so here I'm taking the median of the row-to-row distance
-  mat.euc <- median(diag(as.matrix(dist(dfSim))[-1, -nrow(dfSim)]))
 
-  #mat.manhattan <- vegdist(dfSim,method = "manhattan")
-  # CJ: Base R dist() has manhattan too!
-  mat.euc <- median(diag(as.matrix(dist(dfSim, method = "manhattan"))[-1, -nrow(dfSim)]))
-  # CJ: Same principle applies, we probably don't need vegdist
-  mat.chord <- vegdist(dfnorm_chord, method = "euc") # or vegdist(dfSim,method="chord")
-  mat.logchord <- vegdist(dfnorm_logchord, method = "euc")
-  mat.chisq <- vegdist(dfnorm_chi, method = "euc") # or vegdist(dfSim,method="chisq")
-  mat.hel <- vegdist(dfnorm_hel, method = "euc")
-  mat.jaccard <- vegdist(dfSim,method="jaccard")
-  mat.kulczynski <- vegdist(dfSim,method="kulczynski")
-  mat.bray <- vegdist(dfSim,method="bray")
   resbraypart <- bray.part(dfSim)
 
+  mat.euclidean <- as.matrix(dist(dfSim))
+  mat.manhattan <- as.matrix(vegdist(dfSim,method = "manhattan"))
+  mat.chord <- as.matrix(vegdist(dfnorm_chord, method = "euclidean")) # or vegdist(dfSim,method="chord")
+  mat.logchord <- as.matrix(vegdist(dfnorm_logchord, method = "euclidean"))
+  mat.chisq <- as.matrix(vegdist(dfnorm_chi, method = "euclidean")) # or vegdist(dfSim,method="chisq")
+  mat.hellinger <- as.matrix(vegdist(dfnorm_hellinger, method = "euclidean"))
+  mat.jaccard <- as.matrix(vegdist(dfSim,method="jaccard"))
+  mat.kulczynski <- as.matrix(vegdist(dfSim,method="kulczynski"))
+  mat.brayveg <- as.matrix(vegdist(dfSim,method="bray"))
+  mat.braypart.all <- as.matrix(resbraypart$bray)
+  mat.braypart.bal <- as.matrix(resbraypart$bray.bal)
+  mat.braypart.gra <- as.matrix(resbraypart$bray.gra)
 
-  # Momentary ERV: different measures
-  for (i in 1:n){
-
-    if (successivecomp & i>1){
-      suc.edist <- as.matrix(mat.euc)[i,i-1]
-      suc.manhattan <- as.matrix(mat.manhattan)[i,i-1]
-      suc.chord <- as.matrix(mat.chord)[i,i-1]
-      suc.chisq <- as.matrix(mat.chisq)[i,i-1]
-      suc.logchord <- as.matrix(mat.logchord)[i,i-1]
-      suc.hel <- as.matrix(mat.hel)[i,i-1]
-      suc.jaccard <- as.matrix(mat.jaccard)[i,i-1]
-      suc.kulczynski <- as.matrix(mat.kulczynski)[i,i-1]
-      suc.brayveg <- as.matrix(mat.bray)[i,i-1]
-      suc.bray <- as.matrix(resbraypart$bray)[i,i-1]
-      suc.bray.bal <- as.matrix(resbraypart$bray.bal)[i,i-1]
-      suc.bray.gra <- as.matrix(resbraypart$bray.gra)[i,i-1]
-    }else{
-      suc.edist <- 0
-      suc.manhattan <- 0
-      suc.chord <- 0
-      suc.chisq <- 0
-      suc.logchord <- 0
-      suc.hel <- 0
-      suc.jaccard <- 0
-      suc.kulczynski <- 0
-      suc.brayveg <- 0
-      suc.bray <- 0
-      suc.bray.bal <- 0
-      suc.bray.gra <- 0
-
-          }
-
-    dfNew$edist[i] <- dis_from_moment(mat.euc,i) + suc.edist
-    dfNew$manhattan[i] <- dis_from_moment(mat.manhattan,i) + suc.manhattan
-
-    # **zero row handling**
-    # chord, logchord, chisq, hellinger appear to give okay results
-    # when 0 are replaced by 0.0001
-
-    dfNew$logchord[i] <- dis_from_moment(mat.logchord,i) + suc.logchord
-
-    # chi sq cannot handle blank strategies
-    if (ERblankn > 0 & zerotransform==FALSE){
-      dfNew$chisq[i] <- NA
-    }else{
-      dfNew$chisq[i] <- dis_from_moment(mat.chisq,i) + suc.chisq
-    }
-
-
-    dfNew$hellinger[i] <- dis_from_moment(mat.hel,i) + suc.hel
-    dfNew$chord[i] <- dis_from_moment(mat.chord,i) + suc.chord
-
-    # **zero row handling**
-    #jaccard & bray approaches 1 when all elements in a row approaches 0
-    #kulczynski approaches 0.5 when all elements in a row approaches 0
-
-    dfNew$jaccard[i] <- dis_from_moment(mat.jaccard,i) + suc.jaccard
-    dfNew$kulczynski[i] <- dis_from_moment(mat.kulczynski,i) + suc.kulczynski
-    dfNew$brayveg[i] <- dis_from_moment(mat.bray,i) + suc.brayveg
-
-    # KL Divergence
-
-    dfNew$KLdiv[i] <- dis_from_moment(mat.KLdiv,i)
-
-    # Momentary Bray-Curtis dissimilarity by beta.part
-    # there appears to be some limitation on the bray.part on handling 1 ER stgy only
-    # will throw 0 and warning message if there is only 1 ER stgy
-    dfNew$bray[i] <- dis_from_moment(resbraypart$bray,i) + suc.bray
-    dfNew$bray.bal[i] <- dis_from_moment(resbraypart$bray.bal,i) + suc.bray.bal
-    dfNew$bray.gra[i] <- dis_from_moment(resbraypart$bray.gra,i) + suc.bray.gra
-
-
-    # the below are old lines: distance between moment and mean
-    #   is different from mean distance of the moment to all other moments
-    #   might be needed to handle the complimentary zero problem (0,1,0) vs (1,0,1)
-
-    #dfNew$edist[i] <- (dist(rbind(x,y)))
-    #dfNew$manhattan[i] <- sum(abs(x -y))
-    #dfNew$chordnormed[i] <- vegdist(rbind(dfnorm_chord[i,],colMeans(dfnorm_chord)),"euc")
-    #dfNew$logchordnormed[i] <- vegdist(rbind(dfnorm_logchord[i,],colMeans(dfnorm_logchord)),"euc")
-    #dfNew$chinormed[i] <- vegdist(rbind(dfnorm_chi[i,],colMeans(dfnorm_chi)),"euc")
-    #dfNew$hellinger[i] <- sqrt(1/2 * sum(sqrt(x) -sqrt(y))^2)
-    #dfNew$hellingernormed[i] <- vegdist(rbind(dfnorm_hel[i,],colMeans(dfnorm_hel)),"euc")
-    #dfNew$chord[i] <- vegdist(rbind(x,y),method="chord")[1]
-    #dfNew$jaccard[i] <- vegdist(rbind(x,y),method="jaccard")[1]
-    #dfNew$chisq[i] <- vegdist(rbind(x,y),method="chisq")[1]
-    #dfNew$kulczynski[i] <- vegdist(rbind(x,y),method="kulczynski")[1]
-    #dfNew$brayveg[i] <- vegdist(rbind(x,y),method="bray")[1]
-    #resbraypart <- bray.part(rbind(dfSim[i,],base::lapply(dfSim[,],FUN = mean)))
-    #dfNew$bray[i] <- resbraypart$bray[1]
-    #dfNew$bray.bal[i] <- resbraypart$bray.bal[1]
-    #dfNew$bray.gra[i] <- resbraypart$bray.gra[1]
-
-  }
-
-  # Multi-site Bray-Curtis dissimilarity
-  resBray<- beta.multi.abund(dfSim)
-
+  # if successive comparison, only observations 2:n are used because the 1st doesn't have a previous comparison
   if (successivecomp){
     istart <- 2
   }else{
     istart <- 1
   }
 
-  #---- simOutput
-  # CJ: Try to simplify this and just output a vector with all of the metrics
-  if ((ERn+ERblankn)>1){
-  tempmodel <- lm (a ~ ., data = dfSim)
+
+  # Momentary ERV: different measures
+
+  mom.euclidean <- apply(mat.euclidean,1,mean)*n/(n-1)
+  mom.manhattan  <- apply(mat.manhattan,1,mean)*n/(n-1)
+  mom.chord <- apply(mat.chord,1,mean)*n/(n-1)
+  mom.chisq  <- apply(mat.chisq,1,mean)*n/(n-1)
+  mom.logchord <- apply(mat.logchord,1,mean)*n/(n-1)
+  mom.hellinger <- apply(mat.hellinger,1,mean)*n/(n-1)
+  mom.jaccard<- apply(mat.jaccard,1,mean)*n/(n-1)
+  mom.kulczynski <- apply(mat.kulczynski,1,mean)*n/(n-1)
+  mom.brayveg <- apply(mat.brayveg,1,mean)*n/(n-1)
+  mom.braypart.all  <- apply(mat.braypart.all,1,mean)*n/(n-1)
+  mom.braypart.bal <- apply(mat.braypart.bal,1,mean)*n/(n-1)
+  mom.braypart.gra <- apply(mat.braypart.gra,1,mean)*n/(n-1)
+  mom.KLdiv <- apply(mat.KLdiv,1,mean)*n/(n-1)
+
+  if (successivecomp){
+
+    suc.euclidean <- dis_suc_vector(mat.euclidean)
+    suc.manhattan <- dis_suc_vector(mat.manhattan)
+    suc.chord <- dis_suc_vector(mat.chord)
+    suc.chisq <- dis_suc_vector(mat.chisq)
+    suc.logchord <- dis_suc_vector(mat.logchord)
+    suc.hellinger <- dis_suc_vector(mat.hellinger)
+    suc.jaccard <- dis_suc_vector(mat.jaccard)
+    suc.kulczynski <- dis_suc_vector(mat.kulczynski)
+    suc.brayveg <- dis_suc_vector(mat.brayveg)
+    suc.braypart.all <- dis_suc_vector(mat.braypart.all)
+    suc.braypart.bal <- dis_suc_vector(mat.braypart.bal)
+    suc.braypart.gra <- dis_suc_vector(mat.braypart.gra)
+    suc.KLdiv <- dis_suc_vector(mat.KLdiv)
+
+    mom.euclidean <- (mom.euclidean+suc.euclidean)/2
+    mom.manhattan  <-(mom.manhattan+suc.manhattan)/2
+    mom.chord <- (mom.chord + suc.chord)/2
+    mom.chisq  <- (mom.chisq + suc.chisq)/2
+    mom.logchord <- (mom.logchord + suc.logchord)/2
+    mom.hellinger <- (mom.hellinger + suc.hellinger)/2
+    mom.jaccard<- (mom.jaccard + suc.jaccard)/2
+    mom.kulczynski <- (mom.kulczynski + suc.kulczynski)/2
+    mom.brayveg <- (mom.brayveg + suc.brayveg)/2
+    mom.braypart.all  <- (mom.braypart.all+suc.braypart.all)/2
+    mom.braypart.bal <- (mom.braypart.bal+suc.braypart.bal)/2
+    mom.braypart.gra <- (mom.braypart.gra+suc.braypart.gra)/2
+    mom.KLdiv <- (mom.KLdiv+suc.KLdiv)/2
   }
-  simOutput$em_autoregressive<-acf(dfSim$a, plot = FALSE)$acf[2] #empirical auto correlation
-  simOutput$em_cor<- ifelse(ERn > 1,mean(cor(dfSim)[1,2:length(cor(dfSim))^0.5]),NA) #empirical correlation
-  simOutput$em_r <- ifelse((ERn+ERblankn) > 1,sqrt(summary(tempmodel)$r.squared),NA)
-  simOutput$mean_sd <- mean(dfNew$sd[istart:n])
-  simOutput$mean_edist <- mean(dfNew$edist[istart:n])
-  simOutput$mean_manhattan <- mean(dfNew$manhattan[istart:n])
-  #simOutput$mean_chinormed <- mean(dfNew$chinormed)
-  simOutput$mean_hellinger <- mean(dfNew$hellinger[istart:n])
-  simOutput$mean_jaccard <- mean(dfNew$jaccard[istart:n])
-  simOutput$mean_chisq <- mean(dfNew$chisq[istart:n])
-  simOutput$mean_logchord <- mean(dfNew$logchord[istart:n])
-  simOutput$mean_chord <- mean(dfNew$chord[istart:n])
-  simOutput$mean_kulczynski <- mean(dfNew$kulczynski[istart:n])
-  simOutput$mean_KLdiv <- mean(dfNew$KLdiv[istart:n])
-  simOutput$mean_brayveg <- mean(dfNew$brayveg[istart:n])
-  simOutput$mean_bray <- mean(dfNew$bray[istart:n])
-  simOutput$mean_bray.bal <- mean(dfNew$bray.bal[istart:n])
-  simOutput$mean_bray.gra <- mean(dfNew$bray.gra[istart:n])
-  simOutput$multibray.bal <- resBray$beta.BRAY.BAL
-  simOutput$multibray.gra <- resBray$beta.BRAY.GRA
-  simOutput$multibray <- resBray$beta.BRAY
+
+
+  dfNew <- cbind(dfNew,euclidean = mom.euclidean,
+                 manhattan = mom.manhattan,
+                 chord = mom.chord,
+                 chisq = mom.chisq,
+                 logchord = mom.logchord,
+                 hellinger = mom.hellinger,
+                 jaccard = mom.jaccard,
+                 kulczynski = mom.kulczynski,
+                 brayveg = mom.brayveg,
+                 braypart.all = mom.braypart.all,
+                 braypart.bal = mom.braypart.bal,
+                 braypart.gra = mom.braypart.gra,
+                 KLdiv = mom.KLdiv
+  )
+
+  # Multi-site Bray-Curtis dissimilarity
+  resBray<- beta.multi.abund(dfSim)
+
+  #---- simOutput
+
+  simOutput <- c(acf(dfSim[,1], plot = FALSE)$acf[2], #em_autocorr; error when only 1 strategy
+                 tryCatch(mean(cor(dfSim[,1:(ncol(dfSim)-1)])[1,2:length(cor(dfSim[,1:(ncol(dfSim)-1)]))^0.5]), error=function(err) NA),
+                 tryCatch(sqrt(summary(lm(a ~ ., data = as.data.frame(dfSim)))$r.squared), error=function(err) NA),
+                 mean(dfNew[istart:n,"sd"]) , # NA at 1 strategy
+                 mean(dfNew[istart:n,"euclidean"]) ,
+                 mean(dfNew[istart:n,"manhattan"]) ,
+                 mean(dfNew[istart:n,"hellinger"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"jaccard"]) ,
+                 mean(dfNew[istart:n,"chisq"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"logchord"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"chord"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"kulczynski"]) ,
+                 mean(dfNew[istart:n,"KLdiv"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"brayveg"]) ,
+                 mean(dfNew[istart:n,"braypart.all"]) ,
+                 mean(dfNew[istart:n,"braypart.bal"]) , # zero at 1 strategy
+                 mean(dfNew[istart:n,"braypart.gra"]) ,
+                 resBray$beta.BRAY.BAL,
+                 resBray$beta.BRAY.GRA,
+                 resBray$beta.BRAY
+  )
 
   return(simOutput)
 
 }
 
+simulatecalculate <- function(i.siminput){
+  return (funcal(i.siminput,funsim(i.siminput)))
+}
+
 #function to calculate the mean dissimilarity from one obs to all other obs, input dist
 dis_from_moment <- function(distobj,obs){
-  nobs <- n
-  return (mean(as.matrix(distobj)[obs,])*nobs/(nobs-1))
+  return (mean(as.matrix(distobj)[obs,])*n/(n-1))
+}
+
+dis_suc_vector <- function(distmat){
+  return (c(0,(distmat[row(distmat) == col(distmat) + 1])))
 }
 
 # function to return partial correlations ofdissimlarity measures to the 3 parameters
-returnfit <- function(measure,dfreturn){
+returnfit <- function(measure,dfreturn,testtype){
   dftemp <- data.frame(measure = dfreturn[,measure],
-                       autoregressive = dfreturn$autoregressive,
+                       autocorr = dfreturn$autocorr,
                        meanshift = dfreturn$meanshift,
-                       # emautoregressive = dfreturn$em_autoregressive,
-                       # emcor = dfreturn$em_r,
+                       correlation = dfreturn$correlation,
                        ER_mean = dfreturn$ER_mean,
                        ER_withinSD = dfreturn$ER_withinSD,
                        ERn = dfreturn$ERn,
                        scalemax = dfreturn$scalemax)
-    dftemp <- Filter(function(x)(length(unique(x))>1), dftemp)
-    if (is.na(dfreturn[1,measure])){
+  dftemp <- Filter(function(x)(length(unique(x))>1), dftemp)
+  if (is.na(dfreturn[1,measure])){
     tempfitres <-  (data.frame(rep(NA, length(dftemp))))
-    }else{
-    tempfitres <- (pcor(dftemp)$estimate[1,])
+  }else{
+    if (testtype=="pcor"){
+      tempfitres <- (pcor(dftemp)$estimate[1,])
     }
+    if (testtype=="cor"){
+      tempfitres <- (cor(dftemp)[1,])
+    }
+  }
   #renaming is needed because if sim parameters doesn't change the pcor does not return names
   names(tempfitres) <- names(dftemp)
   return(tempfitres)
@@ -348,32 +359,64 @@ returnfit <- function(measure,dfreturn){
 # actually running the simulation
 # ====================================
 
+if (parallelized){
+  #setup parallel backend
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1) #not to overload your computer
+  registerDoParallel(cl)
 
-resOutput <- data.frame()
-for (i in 1:nrow(siminput)){
-  resSim<-rdply(simn,funsim(siminput$autoregressive[i],siminput$meanshift[i],
-                            siminput$ER_mean[i],
-                            siminput$ER_withinSD[i],
-                            siminput$ERn[i],
-                            siminput$scalemax[i]))
-  #resSim <- simOutput
-  if(length(resOutput)==0){
-      resOutput <- resSim
-    }else{
-      resOutput <- rbind.data.frame(resOutput,resSim)
+  resOutput <- foreach(i=1:nrow(siminput),
+                       .combine=rbind,
+                       .packages = c("tsDyn","MASS","vegan","entropy","betapart")) %dopar% {
+                         resSim <- t(replicate(simn,simulatecalculate(i)))
+                         resSim #Equivalent to resOutput = rbind(resOutput, resSim)
+                       }
+  #stop parallel cluster
+  stopCluster(cl)
+}else{
+  # for loop method
+  resOutput <- t(replicate(simn,simulatecalculate(1)))
+  for (i in 2:nrow(siminput)){
+    resSim<-t(replicate(simn,simulatecalculate(i)))
+    resOutput <- rbind(resOutput,resSim)
   }
 }
 
+colnames(resOutput) <- c("em_autocorr",
+                         "em_cor",
+                         "em_r",
+                         "mean_sd",
+                         "mean_euclidean",
+                         "mean_manhattan",
+                         "mean_hellinger",
+                         "mean_jaccard",
+                         "mean_chisq",
+                         "mean_logchord",
+                         "mean_chord",
+                         "mean_kulczynski",
+                         "mean_KLdiv",
+                         "mean_brayveg",
+                         "mean_braypart.all",
+                         "mean_braypart.bal",
+                         "mean_braypart.gra",
+                         "multibray.bal",
+                         "multibray.gra",
+                         "multibray.all"
+)
 
-# ============
-# calculate the fit
-# ============
+#bind the simulation parameters to result
+resInfo <- siminput[rep(seq_len(nrow(siminput)), each = simn), ]
+resOutput <- cbind(resInfo,resOutput)
+
+# ============================================================
+# calculate the fit with partial-correlation and correlation
+# ============================================================
 
 
 returninput <- c("mean_sd",
-                 "mean_edist",
-                 "mean_bray",
-                 "multibray",
+                 "mean_euclidean",
+                 "mean_brayveg",
+                 "multibray.all",
                  "mean_hellinger",
                  "mean_jaccard",
                  "mean_manhattan",
@@ -382,17 +425,31 @@ returninput <- c("mean_sd",
                  "mean_logchord",
                  "mean_kulczynski",
                  "mean_KLdiv"
-                 )
-resSummary <- data.frame()
+)
+resSummary_partialcor <- data.frame()
 for (i in 1:length(returninput)){
-  if(length(resSummary)==0){
-    resSummary <- data.frame(as.list(returnfit(returninput[i],resOutput)))
+  if(length(resSummary_partialcor)==0){
+    resSummary_partialcor <- data.frame(as.list(returnfit(returninput[i],resOutput,"pcor")))
   }else{
-    tempdf <- data.frame(as.list(returnfit(returninput[i],resOutput)))
-    names(tempdf) <- names(resSummary)
-    resSummary <- rbind.data.frame(resSummary,tempdf)
+    tempdf <- data.frame(as.list(returnfit(returninput[i],resOutput,"pcor")))
+    names(tempdf) <- names(resSummary_partialcor)
+    resSummary_partialcor <- rbind.data.frame(resSummary_partialcor,tempdf)
   }
-  resSummary[i,1] <- returninput[i]
+  resSummary_partialcor[i,1] <- returninput[i]
 }
 
-resSummary
+resSummary_cor <- data.frame()
+for (i in 1:length(returninput)){
+  if(length(resSummary_cor)==0){
+    resSummary_cor <- data.frame(as.list(returnfit(returninput[i],resOutput, "cor")))
+  }else{
+    tempdf <- data.frame(as.list(returnfit(returninput[i],resOutput, "cor")))
+    names(tempdf) <- names(resSummary_cor)
+    resSummary_cor <- rbind.data.frame(resSummary_cor,tempdf)
+  }
+  resSummary_cor[i,1] <- returninput[i]
+}
+
+
+resSummary_partialcor
+resSummary_cor
