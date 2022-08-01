@@ -13,8 +13,8 @@ options(scipen=999)
 
 # 1. ERn = 1 case can be handled by adding a blank strategy (set ERblankn>=1)
 # 2. Explore if there's a way out other than choosing between an unwanted
-    #-ve association with ER_mean or +ve association with scalemax.
-    #E.g., Extra adjustment, say, add ERn and scalemax to denominator of Euclidean distance?
+#-ve association with ER_mean or +ve association with scalemax.
+#E.g., Extra adjustment, say, add ERn and scalemax to denominator of Euclidean distance?
 # 3. Produce data visualizations to see if relationships are linear or not
 # 4. Add RQA
 # 5. Handle missing rows (in empirical dataset)
@@ -62,48 +62,48 @@ siminput <- expand.grid(
 # define functions
 # ==================================
 funsim <- function(i.siminput){
-    autocorr = siminput$autocorr[i.siminput]
-    meanshift = siminput$meanshift[i.siminput]
-    correlation = siminput$correlation[i.siminput]
-    ER_mean = siminput$ER_mean[i.siminput]
-    ER_withinSD = siminput$ER_withinSD[i.siminput]
-    ERn = siminput$ERn[i.siminput]
-    scalemax = siminput$scalemax[i.siminput]
+  autocorr = siminput$autocorr[i.siminput]
+  meanshift = siminput$meanshift[i.siminput]
+  correlation = siminput$correlation[i.siminput]
+  ER_mean = siminput$ER_mean[i.siminput]
+  ER_withinSD = siminput$ER_withinSD[i.siminput]
+  ERn = siminput$ERn[i.siminput]
+  scalemax = siminput$scalemax[i.siminput]
 
 
   #---- simulating ER strategies
-    # create an alternating -1,1,... vector for mean-shifting other strategies
-    signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
-    signvector[1] <- 0
-    signvector <- signvector[1:ERn]
-    # adjust it so that the overall mean (of all strategies) remain as first specified
-    signvector <- signvector-sum(signvector)/ERn
-    # repeat signvector n times to fit the # of observations
-    signvector <- rep(signvector, each = n)
+  # create an alternating -1,1,... vector for mean-shifting other strategies
+  signvector <- sign(rnorm(1))*as.vector(rbind(rep(1,ERn), rep(-1,ERn)))
+  signvector[1] <- 0
+  signvector <- signvector[1:ERn]
+  # adjust it so that the overall mean (of all strategies) remain as first specified
+  signvector <- signvector-sum(signvector)/ERn
+  # repeat signvector n times to fit the # of observations
+  signvector <- rep(signvector, each = n)
 
-    # # ----------------------------------------------------
-    # # Using the VAR.sim method...(can specify correlation, autocorrelation, cross-lagged rx)
-    # # VAR.sim must create multivariate time series.
-    # # VAR.sim inflates SD when autocorrelation is high,
-    # # counters-off the negative association effect between autocorrelation and ERV
-    #
-    # if (ERn >1){
-    #   tmpERn <- ERn
-    # }else{
-    #   tmpERn <- 2
-    # }
-    # CV <- diag(1, tmpERn,tmpERn)
-    # CV[CV == 0] <- correlation
-    # B1 <- diag(autocorr, tmpERn,tmpERn)
-    # # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
-    # if (ERn >1){
-    #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
-    # }else{
-    #   # VAR.sim must create multivariate time series;
-    #   # cut back to 1 col
-    #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
-    # }
-    # # ----------------------------------------------------
+  # # ----------------------------------------------------
+  # # Using the VAR.sim method...(can specify correlation, autocorrelation, cross-lagged rx)
+  # # VAR.sim must create multivariate time series.
+  # # VAR.sim inflates SD when autocorrelation is high,
+  # # counters-off the negative association effect between autocorrelation and ERV
+  #
+  # if (ERn >1){
+  #   tmpERn <- ERn
+  # }else{
+  #   tmpERn <- 2
+  # }
+  # CV <- diag(1, tmpERn,tmpERn)
+  # CV[CV == 0] <- correlation
+  # B1 <- diag(autocorr, tmpERn,tmpERn)
+  # # B1[B1 == 0] <- 0 # can replace by cross-lagged paremeter if needed
+  # if (ERn >1){
+  #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV))
+  # }else{
+  #   # VAR.sim must create multivariate time series;
+  #   # cut back to 1 col
+  #   dfSim <- (VAR.sim(B=B1, n=n, include="none",varcov=CV)[,1])
+  # }
+  # # ----------------------------------------------------
 
   # ----------------------------------------------------
   # Using mvrnorm and meanshift to create strategies
@@ -119,10 +119,10 @@ funsim <- function(i.siminput){
 
 
   # apply meanshift adjustment
-    dfSim <- dfSim + signvector*meanshift
+  dfSim <- dfSim + signvector*meanshift
   # Scale up the simulated data to match the mean, SD and scalemax parameters
-   dfSim <- dfSim*ER_withinSD*scalemax
-   dfSim <- dfSim+ER_mean*scalemax
+  dfSim <- dfSim*ER_withinSD*scalemax
+  dfSim <- dfSim+ER_mean*scalemax
 
   #Create "blank" strategies
   if(ERblankn>0){
@@ -160,7 +160,7 @@ funsim <- function(i.siminput){
   # CJ: Instead of adding a small constant here, you can either:
   # CJ: Create a wrapper for your metric functions that adds a small constant if necessary, OR create a wrapper that returns NA if the calculation fails
   if (zerotransform){
-  dfSim[dfSim == 0] <- 0.0001
+    dfSim[dfSim == 0] <- 0.0001
   }
 
   return(dfSim)
@@ -283,7 +283,7 @@ funcal <- function(i.siminput,dfSim){
                  braypart.bal = mom.braypart.bal,
                  braypart.gra = mom.braypart.gra,
                  KLdiv = mom.KLdiv
-                 )
+  )
 
   # Multi-site Bray-Curtis dissimilarity
   resBray<- beta.multi.abund(dfSim)
@@ -310,9 +310,9 @@ funcal <- function(i.siminput,dfSim){
                  resBray$beta.BRAY.BAL,
                  resBray$beta.BRAY.GRA,
                  resBray$beta.BRAY
-                 )
+  )
 
-    return(simOutput)
+  return(simOutput)
 
 }
 
@@ -339,17 +339,17 @@ returnfit <- function(measure,dfreturn,testtype){
                        ER_withinSD = dfreturn$ER_withinSD,
                        ERn = dfreturn$ERn,
                        scalemax = dfreturn$scalemax)
-    dftemp <- Filter(function(x)(length(unique(x))>1), dftemp)
-    if (is.na(dfreturn[1,measure])){
+  dftemp <- Filter(function(x)(length(unique(x))>1), dftemp)
+  if (is.na(dfreturn[1,measure])){
     tempfitres <-  (data.frame(rep(NA, length(dftemp))))
-    }else{
-      if (testtype=="pcor"){
+  }else{
+    if (testtype=="pcor"){
       tempfitres <- (pcor(dftemp)$estimate[1,])
-      }
-      if (testtype=="cor"){
-      tempfitres <- (cor(dftemp)[1,])
-      }
     }
+    if (testtype=="cor"){
+      tempfitres <- (cor(dftemp)[1,])
+    }
+  }
   #renaming is needed because if sim parameters doesn't change the pcor does not return names
   names(tempfitres) <- names(dftemp)
   return(tempfitres)
@@ -368,9 +368,9 @@ if (parallelized){
   resOutput <- foreach(i=1:nrow(siminput),
                        .combine=rbind,
                        .packages = c("tsDyn","MASS","vegan","entropy","betapart")) %dopar% {
-    resSim <- t(replicate(simn,simulatecalculate(i)))
-    resSim #Equivalent to resOutput = rbind(resOutput, resSim)
-  }
+                         resSim <- t(replicate(simn,simulatecalculate(i)))
+                         resSim #Equivalent to resOutput = rbind(resOutput, resSim)
+                       }
   #stop parallel cluster
   stopCluster(cl)
 }else{
@@ -425,7 +425,7 @@ returninput <- c("mean_sd",
                  "mean_logchord",
                  "mean_kulczynski",
                  "mean_KLdiv"
-                 )
+)
 resSummary_partialcor <- data.frame()
 for (i in 1:length(returninput)){
   if(length(resSummary_partialcor)==0){
