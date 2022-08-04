@@ -7,9 +7,9 @@ options(scipen=999)
 # study design
 siminput <- expand.grid(
   # reps
-  rep = 1:100,
+  rep = 1:3,
   # N
-  n = 50,
+  n = 5,
   # higher meanshift, less rank changes occur, lower ERV expected
   meanshift = c(0.0,2.0),
   # higher auto correlation, lower ERV expected
@@ -22,7 +22,9 @@ siminput <- expand.grid(
   # CJ: Minimum ER to 2 right now, some debugging necessary for 1
   ERn = c(2,3,5),
   # max of scale: expects no relationship
-  scalemax = c(10,100)
+  scalemax = c(10,100),
+  # cross-lagged association: expects no relationship
+  cross = c(0)
 )
 siminput[["rep"]] <- NULL
 # Predetermine seed values and store siminput -----------------------------
@@ -34,13 +36,15 @@ saveRDS(siminput, file = "siminput.RData")
 # ==================================
 # define functions
 # ==================================
+library(tsDyn)
+
 simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
   # Assign autoregressive regression parameter to diagonal
   Bmat <- diag(autoregressive, ERn)
   # Assign cross-strategy regression coefficient to off-diagonal
   Bmat[Bmat == 0] <- cross
   # Generate data
-  out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = diag(ER_withinSD, nrow(Bmat)))
+  out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = diag(ER_withinSD^2, nrow(Bmat)))
   # Center to zero; this is to facilitate your argument ER_mean, but I'm not
   # convinced that this is meaningful
   out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
