@@ -7,9 +7,9 @@ options(scipen=999)
 # study design
 siminput <- expand.grid(
   # reps
-  rep = 1:3,
+  rep = 1:2,
   # N
-  n = 5,
+  n = 6,
   # higher meanshift, less rank changes occur, lower ERV expected
   meanshift = c(0.0,2.0),
   # higher auto correlation, lower ERV expected
@@ -17,27 +17,34 @@ siminput <- expand.grid(
   #  mean ER endorsement: expects no relationship
   ER_mean = c(0.2,0.3,0.4),
   # higher within-strategy SD, higher ERV expected
-  ER_withinSD = c(0.14,0.20,0.26), #c(0.15,0.35),
+  ER_withinSD = c(0.14,0.20,0.26),
   # Number of ER strategies: expects no relationship
   # CJ: Minimum ER to 2 right now, some debugging necessary for 1
   ERn = c(2,3,5),
   # max of scale: expects no relationship
-  scalemax = c(10,100),
+  scalemax = c(100),
   # cross-lagged association: expects no relationship
-  cross = c(0)
+  cross = c(0),
+  # composite metric? (successive comparison included)
+  composite = TRUE,
+  # measurement correction
+  measurementcorrection = TRUE
 )
+
+# Load all correction functions
+source("correction_functions.R")
+
 siminput[["rep"]] <- NULL
+siminput[["adjSD"]] <- correctSD(siminput[["autoregressive"]],siminput[["n"]])*siminput[["ER_withinSD"]]
 # Predetermine seed values and store siminput -----------------------------
 
-set.seed(1985)
+set.seed(1999)
 siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
 saveRDS(siminput, file = "siminput.RData")
 
 # ==================================
 # define functions
 # ==================================
-library(tsDyn)
-
 simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
   # Assign autoregressive regression parameter to diagonal
   Bmat <- diag(autoregressive, ERn)
@@ -63,17 +70,36 @@ registerDoSNOW(cl)
 
 # run simulation
 time_start <- Sys.time()
-tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn"), .combine = rbind) %dopar% {
+tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "vegan", "entropy"), .combine = rbind) %dopar% {
   # Set seed
   suppressMessages(attach(siminput[rownum, ]))
   set.seed(seed)
 
   # Simulate data
   df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive, cross = cross, ER_withinSD = ER_withinSD, ER_mean = ER_mean)
+  df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift
+  if (measurementcorrection){
+    df <- correct_range_bound(df)
+  }
 
   out <- c(
     metric_mssd(df),
-    metric_mean_euclidean(df)
+    metric_mean_euclidean(df),
+    metric_person_between_SD(df),
+    metric_person_within_SD(df),
+    metric_person_SD(df,successive = composite),
+    metric_person_vegan(df, "euclidean", successive = composite),
+    metric_person_vegan(df, "manhattan", successive = composite),
+    metric_person_vegan(df, "chord", successive = composite),
+    metric_person_vegan(log1p(df), "euclidean", successive = composite, deco = "norm"),
+    metric_person_vegan(df, "chisq", successive = composite),
+    metric_person_vegan(df, "euclidean", successive = composite, deco = "hellinger"),
+    metric_person_vegan(df, "jaccard", successive = composite),
+    metric_person_vegan(df, "kulczynski", successive = composite),
+    metric_person_vegan(df, "bray", successive = composite),
+    metric_person_KLdiv(df, successive = composite),
+    beta.multi.abund(df)$beta.BRAY
+
   )
   # CJ: If the sim takes very long or uses a lot of memory, print to text files.
   # CJ: If not, just return the output.
