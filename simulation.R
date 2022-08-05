@@ -46,8 +46,9 @@ saveRDS(siminput, file = "siminput.RData")
 # define functions
 # ==================================
 simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
-  # Assign autoregressive regression parameter to diagonal
-  Bmat <- diag(autoregressive, ERn)
+  # Assign autoregressive regression parameter to diagonal;
+  # VAR.sim needs at least 2 columns so +1 if ERn == 1.
+  Bmat <- diag(autoregressive, ERn+(ERn==1))
   # Assign cross-strategy regression coefficient to off-diagonal
   Bmat[Bmat == 0] <- cross
   # Generate data
@@ -55,8 +56,8 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_wit
   # Center to zero; this is to facilitate your argument ER_mean, but I'm not
   # convinced that this is meaningful
   out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
-  # Center to desired mean
-  out + matrix(ER_mean, ncol = ncol(out), nrow = nrow(out))
+  # Output specified ERn; Center to desired mean
+  out[,1:ERn] + ER_mean
 }
 # Load all metric functions
 source("metric_functions.R")
