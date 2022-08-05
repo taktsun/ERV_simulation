@@ -32,7 +32,7 @@ for (i in 1:length(list_metrics)){
     pcortemp <- pcor(dftemp)$estimate[1,]
   }, error = function(e){
     # assign NA to pcor results as pcor throws error upon NA input
-    pcortemp <- cortemp
+    pcortemp <<- cortemp
   })
 
   if(i==1){
