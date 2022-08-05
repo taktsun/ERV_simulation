@@ -24,28 +24,53 @@ composite_mean <- function (matx, successive){
 
 
 metric_mssd <- function(x){
-  mean(rowSums((x[-1, ] - x[-nrow(x),])^2))
+  tryCatch({
+  if(!is.matrix(x)) stop()
+    mean(rowSums((x[-1, ] - x[-nrow(x),])^2))
+  }, error = function(e){
+    mean((x[1:(length(x)-1)] - x[2:(length(x))])^2)
+  })
 }
 metric_mean_euclidean <- function(x){
-  mean(sqrt(rowSums((x[-1, ] - x[-nrow(x),])^2)))
+  tryCatch({
+  if(!is.matrix(x)) stop()
+    mean(sqrt(rowSums((x[-1, ] - x[-nrow(x),])^2)))
+  }, error = function(e){
+    mean(sqrt((x[1:(length(x)-1)] - x[2:(length(x))])^2))
+  })
 }
 
 # between-strategy SD
 metric_person_between_SD <- function(x){
-  mean(apply(x,1,sd))
+  tryCatch({
+    if(!is.matrix(x)) stop()
+    mean(apply(x,1,sd))
+  }, error = function(e){
+    NA
+  })
 }
 # within-strategy SD
 metric_person_within_SD <- function(x){
-  mean(apply(x,2,sd))
+  tryCatch({
+    if(!is.matrix(x)) stop()
+    mean(apply(x,2,sd))
+  }, error = function(e){
+    sd(x)
+  })
 }
 
 # composite person mean dissimilarity by between-strategy SD
 metric_person_SD <- function(x, successive = TRUE){
+  tryCatch({
+  if(!is.matrix(x)) stop()
   matx <- abs(outer(apply(x,1,sd),apply(x,1,sd), '-'))
   mom <- apply(matx,1,mean)*nrow(matx)/(nrow(matx)-1)
   suc <- dis_suc_vector(matx)
   com <- (mom + suc*successive)/(1+successive)
   mean(com[(1+successive):nrow(matx)])
+  }, error = function(e){
+    NA
+  })
 }
 
 # composite person mean dissimilarity with various methods (see vegdist)
