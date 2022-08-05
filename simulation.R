@@ -20,14 +20,14 @@ siminput <- expand.grid(
   ER_withinSD = c(0.14,0.20,0.26),
   # Number of ER strategies: expects no relationship
   # CJ: Minimum ER to 2 right now, some debugging necessary for 1
-  ERn = c(2,3,5),
+  ERn = c(1,2,5),
   # max of scale: expects no relationship
   scalemax = c(100),
   # cross-lagged association: expects no relationship
   cross = c(0),
-  # composite metric? (successive comparison included)
+  # composite metric? (include successive comparison?)
   composite = TRUE,
-  # measurement correction
+  # measurement correction?
   measurementcorrection = TRUE
 )
 
@@ -78,7 +78,9 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
 
   # Simulate data
   df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive, cross = cross, ER_withinSD = ER_withinSD, ER_mean = ER_mean)
+  # Mean shift
   df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift
+  # Measurement corrections
   if (measurementcorrection){
     df <- correct_range_bound(df)
   }
