@@ -26,9 +26,14 @@ res_pcor <- data.frame()
 res_cor <- data.frame()
 for (i in 1:length(list_metrics)){
   dftemp <- cbind(output[,list_metrics[i]],output[,1:(ncol(output)-length(list_metrics))])
-  dftemp <- Filter(function(x)(length(unique(x))>1), dftemp)
-  pcortemp <- pcor(dftemp)$estimate[1,]
+  dftemp <- cbind("dissimilarity" = dftemp[,1],Filter(function(x)(length(unique(x))>1), dftemp[2:ncol(dftemp)]))
   cortemp <- cor(dftemp)[1,]
+  tryCatch({
+    pcortemp <- pcor(dftemp)$estimate[1,]
+  }, error = function(e){
+    # assign NA to pcor results as pcor throws error upon NA input
+    pcortemp <- cortemp
+  })
 
   if(i==1){
     res_pcor <- data.frame(as.list(pcortemp))
