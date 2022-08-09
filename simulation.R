@@ -7,20 +7,20 @@ options(scipen=999)
 # study design
 siminput <- expand.grid(
   # reps
-  rep = 1:2,
+  rep = 1:20,
   # N
-  n = 6,
-  # higher meanshift, less rank changes occur, lower ERV expected
+  n = c(10,100),
+  # meanshift in multiples of SD. High meanshift, lower ERV expected
   meanshift = c(0.0,2.0),
   # higher auto correlation, lower ERV expected
   autoregressive = c(0.25,0.75),
-  #  mean ER endorsement: expects no relationship
+  #  mean ER endorsement: only accept values between 0 - 1
   ER_mean = c(0.2,0.3,0.4),
-  # higher within-strategy SD, higher ERV expected
+  # within-strategy SD: only accept values between 0 - 1
   ER_withinSD = c(0.14,0.20,0.26),
   # Number of ER strategies: expects no relationship
   # CJ: Minimum ER to 2 right now, some debugging necessary for 1
-  ERn = c(1,2,5),
+  ERn = c(2,3,5),
   # max of scale: expects no relationship
   scalemax = c(100),
   # cross-lagged association: expects no relationship
@@ -56,7 +56,7 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_wit
   # Center to zero; this is to facilitate your argument ER_mean, but I'm not
   # convinced that this is meaningful
   out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
-  # Output specified ERn; Center to desired mean
+  # Output a matrix/vector with specified ERn; Set desired mean
   out[,1:ERn] + ER_mean
 }
 # Load all metric functions
@@ -79,7 +79,7 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
   # Simulate data
   df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive, cross = cross, ER_withinSD = ER_withinSD, ER_mean = ER_mean)
   # Mean shift
-  df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift
+  df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift*ER_withinSD
   # Measurement corrections
   if (measurementcorrection){
     df <- correct_range_bound(df)

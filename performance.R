@@ -20,7 +20,7 @@ list_metrics <- c("mssd",
 colnames(tab) <- list_metrics
 output <-  cbind(siminput,tab)
 output[["seed"]] <- NULL
-output[["ER_withinSD"]] <- NULL
+output[["ER_withinSD"]] <- NULL # replace by "adjSD" if needed
 
 res_pcor <- data.frame()
 res_cor <- data.frame()
