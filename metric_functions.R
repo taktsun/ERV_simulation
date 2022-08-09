@@ -66,6 +66,7 @@ metric_person_SD <- function(x, successive = TRUE){
   matx <- abs(outer(apply(x,1,sd),apply(x,1,sd), '-'))
   mom <- apply(matx,1,mean)*nrow(matx)/(nrow(matx)-1)
   suc <- dis_suc_vector(matx)
+  # list(mom,suc)
   com <- (mom + suc*successive)/(1+successive)
   mean(com[(1+successive):nrow(matx)])
   }, error = function(e){
@@ -74,10 +75,7 @@ metric_person_SD <- function(x, successive = TRUE){
 }
 
 # composite person mean dissimilarity with various methods (see vegdist)
-metric_person_vegan <- function(x, method, successive = TRUE, deco = ""){
-  if (deco !="") {
-    x <- decostand(x,deco)
-  }
+metric_person_vegan <- function(x, method, successive = TRUE){
   matx <- as.matrix(vegdist(x,method = method))
   composite_mean(matx,successive)
 }

@@ -11,15 +11,14 @@ siminput <- expand.grid(
   # N
   n = c(10,100),
   # meanshift in multiples of SD. High meanshift, lower ERV expected
-  meanshift = c(0.0,2.0),
+  meanshift = c(0.0,1,2),
   # higher auto correlation, lower ERV expected
-  autoregressive = c(0.25,0.75),
+  autoregressive = c(-0.5,0.25,0.75),
   #  mean ER endorsement: only accept values between 0 - 1
   ER_mean = c(0.2,0.3,0.4),
   # within-strategy SD: only accept values between 0 - 1
   ER_withinSD = c(0.14,0.20,0.26),
   # Number of ER strategies: expects no relationship
-  # CJ: Minimum ER to 2 right now, some debugging necessary for 1
   ERn = c(2,3,5),
   # max of scale: expects no relationship
   scalemax = c(100),
@@ -94,9 +93,9 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
     metric_person_vegan(df, "euclidean", successive = composite),
     metric_person_vegan(df, "manhattan", successive = composite),
     metric_person_vegan(df, "chord", successive = composite),
-    metric_person_vegan(log1p(df), "euclidean", successive = composite, deco = "norm"),
+    metric_person_vegan(decostand(log1p(df),"norm"), "euclidean", successive = composite),
     metric_person_vegan(df, "chisq", successive = composite),
-    metric_person_vegan(df, "euclidean", successive = composite, deco = "hellinger"),
+    metric_person_vegan(decostand(df,"hellinger"), "euclidean", successive = composite),
     metric_person_vegan(df, "jaccard", successive = composite),
     metric_person_vegan(df, "kulczynski", successive = composite),
     metric_person_vegan(df, "bray", successive = composite),
