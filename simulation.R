@@ -81,6 +81,7 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
   df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift*ER_withinSD
   # Measurement corrections
   if (measurementcorrection){
+    # CJ: THis introduces bias, that's probably not what you want to do
     df <- correct_range_bound(df)
   }
 
