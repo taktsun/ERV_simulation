@@ -56,7 +56,7 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_wit
   # convinced that this is meaningful
   out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
   # Output a matrix/vector with specified ERn; Set desired mean
-  out[,1:ERn] + ER_mean
+  out[,1:ERn, drop = FALSE] + ER_mean
 }
 # Load all metric functions
 source("metric_functions.R")
@@ -67,20 +67,22 @@ library(parallel)
 nclust <- parallel::detectCores()
 cl <- makeCluster(nclust)
 registerDoSNOW(cl)
+paths <- .libPaths()
 
 # run simulation
 time_start <- Sys.time()
-tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "vegan", "entropy"), .combine = rbind) %dopar% {
+tab <- foreach(rownum = 1:nrow(siminput), paths = paths, .packages = c("tsDyn", "betapart", "vegan", "entropy", "doParallel"), .combine = rbind) %dopar% {
   # Set seed
   suppressMessages(attach(siminput[rownum, ]))
   set.seed(seed)
-
+  .libPaths(paths)
   # Simulate data
   df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive, cross = cross, ER_withinSD = ER_withinSD, ER_mean = ER_mean)
   # Mean shift
   df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift*ER_withinSD
   # Measurement corrections
   if (measurementcorrection){
+    # CJ: THis introduces bias, that's probably not what you want to do
     df <- correct_range_bound(df)
   }
 
