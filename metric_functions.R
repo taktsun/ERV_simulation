@@ -84,7 +84,9 @@ metric_person_vegan <- function(x, method, successive = TRUE){
 metric_person_KLdiv <- function(x, successive = TRUE){
   # CJ: Avoid the decostand call, the algebra is just
   # x <- x / pmax(1e-16, apply(df, 1, sum, na.rm = TRUE))
-  x <- decostand(x,"total") # CJ: THis throws a warning that results may be non-sense
+  #x <- decostand(x,"total") # CJ: THis throws a warning that results may be non-sense
+  x <- x / rowSums(df) # Note: THis will fail until the time series are never zero
+  # The code below is really inefficient, try to rewrite as matrix algebra or vectorize it
   tempdist <- c()
   for (k in 1:(nrow(x)-1)){
     for (j in (k+1):nrow(x)){
