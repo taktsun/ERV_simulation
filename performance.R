@@ -1,9 +1,13 @@
 library(ppcor) # partial correlation
 
-list_metrics <- c("mssd",
-                  "suc_euclidean",
+n_singleoutput_metric <- 5
+list_metrics <- c("multibray",
+                  "mbray_gra",
+                  "mbray_bal",
                   "betweenSD",
                   "withinSD",
+                  # all person level measures go above
+                  # remember to amend n_singleoutput_metric
                   "SD",
                   "euclidean",
                   "manhattan",
@@ -14,11 +18,31 @@ list_metrics <- c("mssd",
                   "jaccard",
                   "kulczynski",
                   "bray",
-                  "KLdiv",
-                  "multibray"
+                  "bray(beta)",
+                  "bray.bal",
+                  "bray.gra",
+                  "KLdiv"
 )
-colnames(tab) <- list_metrics
-output <-  cbind(siminput,tab)
+
+
+print_result <- function(timemode="successive"){
+  if (n_singleoutput_metric > 0){
+    temptab <- (tab[,-c(1:n_singleoutput_metric)])
+  }else{
+    temptab <- tab
+  }
+
+# 0 = suc.second, 1 = mom.all, 2 = mom.second
+if (timemode == "composite"){
+  temptab <- (temptab[, seq_len(ncol(temptab)) %% 3 == 0] + temptab[, seq_len(ncol(temptab)) %% 3 == 2])/2
+} else if (timemode == "successive"){
+  temptab <- temptab[, seq_len(ncol(temptab)) %% 3 == 0]
+} else { #"allmoment"
+  temptab <- temptab[, seq_len(ncol(temptab)) %% 3 == 1]
+}
+temptab <- cbind((tab[,  (n_singleoutput_metric>0):n_singleoutput_metric]),temptab)
+colnames(temptab) <- list_metrics
+output <-  cbind(siminput,temptab)
 output[["seed"]] <- NULL
 output[["ER_withinSD"]] <- NULL # replace by "adjSD" if needed
 
@@ -46,5 +70,8 @@ for (i in 1:length(list_metrics)){
   res_cor[i,1] <- list_metrics[i]
 }
 
-res_pcor
-res_cor
+list(partial_correlation=res_pcor,correlation=res_cor)
+}
+
+# allmoment, successive, or composite
+print_result("allmoment")

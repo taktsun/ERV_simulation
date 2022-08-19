@@ -7,27 +7,27 @@ options(scipen=999)
 # study design
 siminput <- expand.grid(
   # reps
-  rep = 1:20,
+  rep = 1:1,
   # N
-  n = c(10,100),
-  # meanshift in multiples of SD. High meanshift, lower ERV expected
-  meanshift = c(0.0,1,2),
-  # higher auto correlation, lower ERV expected
-  autoregressive = c(-0.5,0.25,0.75),
-  #  mean ER endorsement: only accept values between 0 - 1
-  ER_mean = c(0.2,0.3,0.4),
-  # within-strategy SD: only accept values between 0 - 1
+  n = c(10,50,100),
+  # meanshift in multiples of SD
+  meanshift = c(0.0),
+  # autocorrelation
+  autoregressive = c(0,0.25),
+  #  mean ER endorsement: now it is used to move the dataset up to avoid -ve values
+  ER_mean = c(3),
+  # within-strategy SD
   ER_withinSD = c(0.14,0.20,0.26),
-  # Number of ER strategies: expects no relationship
+  # Number of ER strategies
   ERn = c(2,3,5),
   # max of scale: expects no relationship
   scalemax = c(100),
-  # cross-lagged association: expects no relationship
+  # correlation
+  correlation = c(-0.2,0,0.3),
+  # cross-lagged association
   cross = c(0),
-  # composite metric? (include successive comparison?)
-  composite = TRUE,
-  # measurement correction?
-  measurementcorrection = TRUE
+  # measurement correction
+  measurementcorrection = FALSE
 )
 
 # Load all correction functions
@@ -44,17 +44,23 @@ saveRDS(siminput, file = "siminput.RData")
 # ==================================
 # define functions
 # ==================================
-simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
+simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, correlation = 0, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
   # Assign autoregressive regression parameter to diagonal;
   # VAR.sim needs at least 2 columns so +1 if ERn == 1.
   Bmat <- diag(autoregressive, ERn+(ERn==1))
   # Assign cross-strategy regression coefficient to off-diagonal
   Bmat[Bmat == 0] <- cross
+  # create correlation matrix
+  Cmat <- diag(1, nrow(Bmat))
+  Cmat[Cmat == 0] <- correlation
+  # convert into var-covariance matrix.
+  Cmat <- Cmat * ER_withinSD^2
   # Generate data
-  out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = diag(ER_withinSD^2, nrow(Bmat)))
+  out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = Cmat)
   # Center to zero; this is to facilitate your argument ER_mean, but I'm not
   # convinced that this is meaningful
-  out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
+  # EL: indeed this is not needed. The VAR model has zero mean with sufficient number of repetitions.
+  # out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
   # Output a matrix/vector with specified ERn; Set desired mean
   out[,1:ERn, drop = FALSE] + ER_mean
 }
@@ -68,16 +74,18 @@ nclust <- parallel::detectCores()
 cl <- makeCluster(nclust)
 registerDoSNOW(cl)
 paths <- .libPaths()
-
 # run simulation
 time_start <- Sys.time()
-tab <- foreach(rownum = 1:nrow(siminput), paths = paths, .packages = c("tsDyn", "betapart", "vegan", "entropy", "doParallel"), .combine = rbind) %dopar% {
+# EL: not sure why adding "paths = paths," bring error in my machine. Temporarily remove
+tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "vegan", "entropy"), .combine = rbind) %dopar% {
   # Set seed
   suppressMessages(attach(siminput[rownum, ]))
   set.seed(seed)
   .libPaths(paths)
   # Simulate data
-  df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive, cross = cross, ER_withinSD = ER_withinSD, ER_mean = ER_mean)
+  df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive,
+                      correlation = correlation, cross = cross,
+                      ER_withinSD = ER_withinSD, ER_mean = ER_mean)
   # Mean shift
   df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift*ER_withinSD
   # Measurement corrections
@@ -87,23 +95,25 @@ tab <- foreach(rownum = 1:nrow(siminput), paths = paths, .packages = c("tsDyn", 
   }
 
   out <- c(
-    metric_mssd(df),
-    metric_mean_euclidean(df),
+    beta.multi.abund(df)$beta.BRAY,
+    beta.multi.abund(df)$beta.BRAY.GRA,
+    beta.multi.abund(df)$beta.BRAY.BAL,
     metric_person_between_SD(df),
     metric_person_within_SD(df),
-    metric_person_SD(df,successive = composite),
-    metric_person_vegan(df, "euclidean", successive = composite),
-    metric_person_vegan(df, "manhattan", successive = composite),
-    metric_person_vegan(df, "chord", successive = composite),
-    metric_person_vegan(decostand(log1p(df),"norm"), "euclidean", successive = composite),
-    metric_person_vegan(df, "chisq", successive = composite),
-    metric_person_vegan(decostand(df,"hellinger"), "euclidean", successive = composite),
-    metric_person_vegan(df, "jaccard", successive = composite),
-    metric_person_vegan(df, "kulczynski", successive = composite),
-    metric_person_vegan(df, "bray", successive = composite),
-    metric_person_KLdiv(df, successive = composite),
-    beta.multi.abund(df)$beta.BRAY
-
+    metric_person_SD(df),
+    metric_person_vegan(df, "euclidean"),
+    metric_person_vegan(df, "manhattan"),
+    metric_person_vegan(df, "chord"),
+    metric_person_vegan(decostand(log1p(df),"norm"), "euclidean"),
+    metric_person_vegan(df, "chisq"),
+    metric_person_vegan(decostand(df,"hellinger"), "euclidean"),
+    metric_person_vegan(df, "jaccard"),
+    metric_person_vegan(df, "kulczynski"),
+    metric_person_vegan(df, "bray"),
+    metric_person_beta(df, "bray"),
+    metric_person_beta(df, "bray",".bal"),
+    metric_person_beta(df, "bray",".gra"),
+    metric_person_KLdiv(df)
   )
   # CJ: If the sim takes very long or uses a lot of memory, print to text files.
   # CJ: If not, just return the output.
