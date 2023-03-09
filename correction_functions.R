@@ -15,7 +15,7 @@ df[df > 1] <- 1
 df
 }
 
-# tbc: scale up to scalemax
+# tbc: scale up to scalemax/scale down everything to range 0-1?
 # tbc: rounding to integer
 
 get_sign_vector <- function (n,ERn) {

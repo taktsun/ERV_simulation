@@ -11,14 +11,15 @@ specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
 set.seed(1999)
 siminput <- expand.grid(
   # reps
-  rep = 100,
+  rep = 1000,
   # nobs of time series
   n = c(30,70,100),
   # Number of ER strategies
   ERn = c(3,6,9)
 )
 siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
-list_metrics <- c("sd.bs",
+list_metrics <- c("sd.ws",
+                  "sd.bs",
                   "sd.mom.all",
                   "sd.suc.second",
                   "bray.mom.all",
@@ -41,7 +42,8 @@ list_metrics <- c("sd.bs",
 
 calcdis <- function(matx, returnparam = FALSE){
 
-  out <- c(sd.bs = metric_person_between_SD(matx),
+  out <- c(sd.ws = metric_person_within_SD(matx),
+           sd.bs = metric_person_between_SD(matx),
            sd = metric_person_SD(matx),
            bray = metric_person_beta(matx, "bray"),
            dBCs = metric_person_beta(matx, "bray",".bal"),
@@ -118,8 +120,8 @@ genswitch <- function(nrep=10, prob=0.5, addmean = 50, flipy = FALSE, outcol = 3
 genresult <- function( nobs = 100, simrep = 1, ERn = 6, xyonly = FALSE, seed = 1999){
   set.seed(seed)
   twooutput <- NULL
-  for (i in 1:100){
-    prob <- i/100
+  for (i in 0:4){ #1:100
+    prob <- 0.1+i*0.2
     tempoutput <- t(replicate(simrep,calcdis(genswitch(nrep = nobs,
                                                        prob = prob,
                                                        flipy=TRUE,

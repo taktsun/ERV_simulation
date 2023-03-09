@@ -7,23 +7,23 @@ options(scipen=999)
 # study design
 siminput <- expand.grid(
   # reps
-  rep = 1:1,
+  rep = 1:100,
   # N
-  n = c(10,50,100),
+  n = c(30,70,100),
   # meanshift in multiples of SD
   meanshift = c(0.0),
   # autocorrelation
-  autoregressive = c(0,0.25),
+  autoregressive = c(-0.09,0.12,0.33),
   #  mean ER endorsement: now it is used to move the dataset up to avoid -ve values
   ER_mean = c(3),
   # within-strategy SD
-  ER_withinSD = c(0.14,0.20,0.26),
+  ER_withinSD = c(0.10,0.19,0.28),
   # Number of ER strategies
-  ERn = c(2,3,5),
+  ERn = c(2,3,5,6),
   # max of scale: expects no relationship
   scalemax = c(100),
   # correlation
-  correlation = c(-0.2,0,0.3),
+  correlation = c(-0.11,0.18,0.47),
   # cross-lagged association
   cross = c(0),
   # measurement correction
@@ -96,23 +96,17 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
 
   out <- c(
     beta.multi.abund(df)$beta.BRAY,
-    beta.multi.abund(df)$beta.BRAY.GRA,
-    beta.multi.abund(df)$beta.BRAY.BAL,
-    metric_person_between_SD(df),
     metric_person_within_SD(df),
+    metric_person_between_SD(df),
     metric_person_SD(df),
-    metric_person_vegan(df, "euclidean"),
-    metric_person_vegan(df, "manhattan"),
-    metric_person_vegan(df, "chord"),
-    metric_person_vegan(decostand(log1p(df),"norm"), "euclidean"),
-    metric_person_vegan(df, "chisq"),
-    metric_person_vegan(decostand(df,"hellinger"), "euclidean"),
-    metric_person_vegan(df, "jaccard"),
-    metric_person_vegan(df, "kulczynski"),
-    metric_person_vegan(df, "bray"),
     metric_person_beta(df, "bray"),
     metric_person_beta(df, "bray",".bal"),
     metric_person_beta(df, "bray",".gra"),
+    metric_person_beta(df, "ruz"),
+    metric_person_beta(df, "ruz",".bal"),
+    metric_person_beta(df, "ruz",".gra"),
+    metric_person_vegan(df, "chord"),
+    metric_person_vegan(df, "chisq"),
     metric_person_KLdiv(df)
   )
   # CJ: If the sim takes very long or uses a lot of memory, print to text files.

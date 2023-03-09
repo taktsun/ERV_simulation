@@ -1,2 +1,22 @@
 worcs_version: 0.1.9
 creator: Lissa102
+data:
+  dfraw1.csv:
+    save_expression: write.csv(x = data, file = filename, row.names = FALSE)
+    load_expression: read.csv(file = filename, stringsAsFactors = TRUE)
+    codebook: codebook_dfraw1.Rmd
+    labels: value_labels_dfraw1.yml
+  dfraw2.csv:
+    save_expression: write.csv(x = data, file = filename, row.names = FALSE)
+    load_expression: read.csv(file = filename, stringsAsFactors = TRUE)
+    codebook: codebook_dfraw2.Rmd
+    labels: value_labels_dfraw2.yml
+  dfraw3.csv:
+    save_expression: write.csv(x = data, file = filename, row.names = FALSE)
+    load_expression: read.csv(file = filename, stringsAsFactors = TRUE)
+    codebook: codebook_dfraw3.Rmd
+    labels: value_labels_dfraw3.yml
+checksums:
+  dfraw1.csv: 927e788cfebf531742d7a33a535fa167
+  dfraw2.csv: 8a521ae0c92e68ea741bd8a7d7315a5b
+  dfraw3.csv: c0ef42fa5cc5a33305c557903eb81acc
