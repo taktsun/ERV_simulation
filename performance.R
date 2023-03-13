@@ -14,8 +14,7 @@ list_metrics <- c("multibray",
                   "jaccard.bal",
                   "jaccard.gra",
                   "chord",
-                  "chisq",
-                  "KLdiv"
+                  "chisq"
 )
 
 

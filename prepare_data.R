@@ -32,9 +32,6 @@ d
 raw1 <- read_sav('https://osf.io/download/w8y33/')
 raw2 <- read_sav('https://osf.io/download/gm52c/')
 raw3 <- read_sav('https://osf.io/download/uvqjh/')
-raw1 <- read_sav('reanalyze/BlankeData1.sav')
-raw2 <- read_sav('reanalyze/BlankeData2.sav')
-raw3 <- read_sav('reanalyze/BlankeData3.sav')
 
 dfraw1 <- prepRawData(rawdata = raw1,
                       sID = "ID_anonym",

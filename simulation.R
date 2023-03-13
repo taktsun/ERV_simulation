@@ -7,7 +7,7 @@ options(scipen=999)
 # study design
 siminput <- expand.grid(
   # reps
-  rep = 1:100,
+  rep = 1:1000,
   # N
   n = c(30,70,100),
   # meanshift in multiples of SD
@@ -57,10 +57,6 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, correlation = 0, 
   Cmat <- Cmat * ER_withinSD^2
   # Generate data
   out <- VAR.sim(B = Bmat, n = n, lag = 1, include = "none", varcov = Cmat)
-  # Center to zero; this is to facilitate your argument ER_mean, but I'm not
-  # convinced that this is meaningful
-  # EL: indeed this is not needed. The VAR model has zero mean with sufficient number of repetitions.
-  # out <- out - matrix(colMeans(out), ncol = ncol(out), nrow = nrow(out), byrow = TRUE)
   # Output a matrix/vector with specified ERn; Set desired mean
   out[,1:ERn, drop = FALSE] + ER_mean
 }
@@ -70,7 +66,7 @@ source("metric_functions.R")
 # prepare parallel processing
 library(doSNOW)
 library(parallel)
-nclust <- parallel::detectCores()
+nclust <- parallel::detectCores()-1
 cl <- makeCluster(nclust)
 registerDoSNOW(cl)
 paths <- .libPaths()
@@ -106,8 +102,7 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
     metric_person_beta(df, "ruz",".bal"),
     metric_person_beta(df, "ruz",".gra"),
     metric_person_vegan(df, "chord"),
-    metric_person_vegan(df, "chisq"),
-    metric_person_KLdiv(df)
+    metric_person_vegan(df, "chisq")
   )
   # CJ: If the sim takes very long or uses a lot of memory, print to text files.
   # CJ: If not, just return the output.
