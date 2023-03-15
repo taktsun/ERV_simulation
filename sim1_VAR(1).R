@@ -10,33 +10,35 @@ siminput <- expand.grid(
   rep = 1:1000,
   # N
   n = c(30,70,100),
-  # meanshift in multiples of SD
-  meanshift = c(0.0),
   # autocorrelation
   autoregressive = c(-0.09,0.12,0.33),
   #  mean ER endorsement: now it is used to move the dataset up to avoid -ve values
   ER_mean = c(3),
   # within-strategy SD
   ER_withinSD = c(0.10,0.19,0.28),
-  # Number of ER strategies
+  # Number of ER strategies]
   ERn = c(2,3,5,6),
   # max of scale: expects no relationship
   scalemax = c(100),
   # correlation
-  correlation = c(-0.11,0.18,0.47),
-  # cross-lagged association
-  cross = c(0),
-  # measurement correction
-  measurementcorrection = FALSE
+  correlation = c(-0.11,0.18,0.47)
 )
 
-# Load all correction functions
-source("correction_functions.R")
+# correction factor for SD
+correctSD <- function(a,n){
+  # see section 1.1 of Beran (1994)
+  a<- abs(a)
+  d <- 1+2*a/(1-a) # eq. 1.14
+  cf <- d*(1-(1/(1-a)/n+ a^n/(1-a)/n)) # eq 1.12
+  cf^0.25
+}
 
+# remove the rep column
 siminput[["rep"]] <- NULL
+# correct SD by the Beran formula
 siminput[["adjSD"]] <- correctSD(siminput[["autoregressive"]],siminput[["n"]])*siminput[["ER_withinSD"]]
-# Predetermine seed values and store siminput -----------------------------
 
+# Predetermine seed values and store siminput -----------------------------
 set.seed(1999)
 siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
 saveRDS(siminput, file = "siminput.RData")
@@ -44,12 +46,10 @@ saveRDS(siminput, file = "siminput.RData")
 # ==================================
 # define functions
 # ==================================
-simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, correlation = 0, cross = 0, ER_withinSD = 1, ER_mean = 0, ...){
+simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, correlation = 0, ER_withinSD = 1, ER_mean = 0, ...){
   # Assign autoregressive regression parameter to diagonal;
   # VAR.sim needs at least 2 columns so +1 if ERn == 1.
   Bmat <- diag(autoregressive, ERn+(ERn==1))
-  # Assign cross-strategy regression coefficient to off-diagonal
-  Bmat[Bmat == 0] <- cross
   # create correlation matrix
   Cmat <- diag(1, nrow(Bmat))
   Cmat[Cmat == 0] <- correlation
@@ -79,19 +79,13 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
   set.seed(seed)
   .libPaths(paths)
   # Simulate data
-  df <- simulate_data(n = n, ERn = ERn, autoregressive = autoregressive,
-                      correlation = correlation, cross = cross,
-                      ER_withinSD = ER_withinSD, ER_mean = ER_mean)
-  # Mean shift
-  df <- df + get_sign_vector(n = n, ERn = ERn)*meanshift*ER_withinSD
-  # Measurement corrections
-  if (measurementcorrection){
-    # CJ: THis introduces bias, that's probably not what you want to do
-    df <- correct_range_bound(df)
-  }
+  df <- simulate_data(n = n, ERn = ERn,
+                      autoregressive = autoregressive,
+                      correlation = correlation,
+                      ER_withinSD = ER_withinSD,
+                      ER_mean = ER_mean)
 
   out <- c(
-    beta.multi.abund(df)$beta.BRAY,
     metric_person_within_SD(df),
     metric_person_between_SD(df),
     metric_person_SD(df),
@@ -120,3 +114,30 @@ writeLines(paste0("Time per row: ", time_per_row), "time_per_row.txt")
 
 # End of simulation -------------------------------------------------------
 stop("End of simulation")
+
+#======================
+# evaluate indices' performance
+#======================
+
+
+library(ppcor) # partial correlation
+source("func_sim1performance.R")
+
+n_singleoutput_metric <- 2
+# the below list has to match what specified in sim1_VAR(1).R
+list_metrics <- c("withinSD",
+                  "betweenSD",
+                  # person-level/non-temporal indices go above
+                  # remember to amend n_singleoutput_metric = number of such indices
+                  "SD",
+                  "bray",
+                  "bray.bal",
+                  "bray.gra",
+                  "jaccard",
+                  "jaccard.bal",
+                  "jaccard.gra",
+                  "chord",
+                  "chisq"
+)
+# allmoment, successive, or composite
+print_result("successive")

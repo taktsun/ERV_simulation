@@ -34,6 +34,9 @@ CESDmax <- 3
 #identify the first beep within each person
 df$firstbeep <- df$triggerid==ave(df$triggerid, df$ppnr, FUN = min)
 df$b_completeER <- complete.cases(df[,inputER])
+if(min(df$triggerid,na.rm = TRUE)==0){
+  df$triggerid <- df$triggerid +1
+}
 
 # Harmonization to make everything between 0 to 6 (or masterscalemax value)
 df$person_CESD <- df$person_CESD/CESDmax*masterscalemax
@@ -97,7 +100,7 @@ df$timecw <- calc.mcent(triggerid, ppnr, data=df)
 df$b_successiveL1 <- lagvar(b_completeER, id=ppnr, obs=triggerid, data=df)
 df$b_successiveL1[is.na(df$b_successiveL1)] <- FALSE
 df$b_successive <- !df$firstbeep & df$b_completeER & df$b_successiveL1
-df$b_successiveL1 <- NULL
+# df$b_successiveL1 <- NULL
 
 # create successive dissimilarity
 
@@ -122,6 +125,12 @@ for (i in 1:nrow(df)){
     df$moment_betweenRSD.suc[i] <- abs(df$moment_betweenRSD.single[i] - df$moment_betweenRSD.single[i-1])
   }
 }
+inputIndices <- c("moment_betweenSD.suc",
+                  "moment_betweenRSD.suc",
+                  "moment_bray.all.suc",
+                  "moment_bray.bal.suc",
+                  "moment_bray.gra.suc")
+df$b_completeIndices <- complete.cases(df[,inputIndices])
 
 df$moment_betweenSD.succw <- calc.mcent(moment_betweenSD.suc, ppnr, data=df)
 df$moment_betweenRSD.succw <- calc.mcent(moment_betweenRSD.suc, ppnr, data=df)
