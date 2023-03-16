@@ -22,7 +22,7 @@ source("RSD/maximumVAR.R")
 source("RSD/relativeSD.R")
 source("RSD/checkOutput.R")
 
-source("metric_functions.R")
+source("func_indices.R")
 source("func_rean_calculateERV.R")
 source("func_rean_desStat.R")
 source("func_rean_MLM.R")

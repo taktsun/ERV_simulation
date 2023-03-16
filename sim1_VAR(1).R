@@ -31,7 +31,7 @@ siminput <- expand.grid(
 # define functions
 # ==================================
 # Load all metric functions
-source("metric_functions.R")
+source("func_indices.R")
 
 # correction factor for SD
 correctSD <- function(a,n){

@@ -9,7 +9,7 @@ library(ppcor) # partial correlation
   seed = 1999
   set.seed(seed)
   siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
-  
+
 # simulation paramaters
   siminput <- expand.grid(
     # reps
@@ -19,12 +19,12 @@ library(ppcor) # partial correlation
     # Number of ER strategies
     ERn = c(3,6,9)
   )
-  
-  
+
+
 # self-defined functions
-  source("metric_functions.R")
+  source("func_indices.R")
   specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
-  
+
 # a list of names that correspond to the indices output specified in calcdis
   list_metrics <- c("withinRSD",
                   "betweenRSD",
@@ -64,7 +64,7 @@ library(ppcor) # partial correlation
            chord = metric_person_vegan(matx, "chord"),
            chisq = metric_person_vegan(matx, "chisq")
   )
-  # this "returnparam" is a debugging option. 
+  # this "returnparam" is a debugging option.
   # If TRUE, returns the mean, sd, autocorrelation, and correlation of the input dataset
   if (returnparam){
     tmpacf<-acf(matx,plot=FALSE)
@@ -82,11 +82,11 @@ library(ppcor) # partial correlation
   genswitch <- function(nrep=10, prob=0.5, addmean = 50, flipy = FALSE, outcol = 3, xyonly = FALSE){
     lormat <- rootlorenz
     lormat <- cbind(lormat[,1]+addmean,lormat[,2]+addmean,lormat[,3]-mean(lormat[,3])+addmean)
-  
+
     # group points into two wings by the symmetrical x-axis
     lormat.c1 <- lormat[lormat[,1]>=addmean,]
     lormat.c2 <- lormat[lormat[,1]<addmean,]
-  
+
 
     # randomly determine which observation is there going to be a switching
     u <- runif(nrep, min = 0, max = 1)
@@ -117,7 +117,7 @@ library(ppcor) # partial correlation
       }
       switchoutput <- rbind(switchoutput,temprow)
     }
-  
+
     # flip the y-axis (at y=addmean) so that the grand mean of each wing will be the same
     if (flipy){
       switchoutput[,2] <- -switchoutput[,2]+addmean*2
@@ -126,7 +126,7 @@ library(ppcor) # partial correlation
     }
     zoutput <- switchoutput[,c(3,6,9)]
     xyoutput <- switchoutput[,-c(3,6,9)]
-    # return 
+    # return
     if (xyonly) {
       xyoutput[,1:outcol]
     }else{
@@ -170,7 +170,7 @@ genresult <- function( nobs = 100, simrep = 1, ERn = 6, xyonly = FALSE, seed = 1
   }
 
 # prepare parallel processing
-rootlorenz <- lorenz() 
+rootlorenz <- lorenz()
 rootlorenz <- as.matrix(cbind(rootlorenz$x, rootlorenz$y, rootlorenz$z))
 library(doSNOW)
 library(parallel)
