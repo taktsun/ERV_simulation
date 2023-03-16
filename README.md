@@ -22,9 +22,9 @@ sim1_VAR(1).R                 | Simulation 1: data generation with VAR(1) | Run 
 sim2_lorenz.R                 | Simulation 2: data generation with Lorenz system | Run to reproduce results (step 2)
 reanalysis_main.R                 | Reanalysis: descriptive statistics and main analyses | Run to reproduce results (step 3)
 func_indices.R                 | Dissimilarity indices for simulations & reanalyses | Required; read only
-func_sim1performance.R                 | Index performance evaluation for simulation 1| Required; read only
-func_rean_calculateERV.R                 | Reanalysis part 1: calculate dissimilarity indices | Required; read only
-func_rean_MLM.R                 | Reanalysis part 2: multilevel models | Required; read only
+func_rean_desStat.R                 | Reanalysis 1: descriptive statistics | Required; read only
+func_rean_calculateERV.R                 | Reanalysis 2: calculate dissimilarity indices | Required; read only
+func_rean_MLM.R                 | Reanalysis 3: multilevel models | Required; read only
 
 
 
