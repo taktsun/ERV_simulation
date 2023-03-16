@@ -4,6 +4,9 @@ options(scipen=999)
 # simulation setup
 #======================
 
+# set seed to reproduce exact results
+set.seed(1999)
+
 # study design
 siminput <- expand.grid(
   # reps
@@ -24,6 +27,12 @@ siminput <- expand.grid(
   correlation = c(-0.11,0.18,0.47)
 )
 
+# ==================================
+# define functions
+# ==================================
+# Load all metric functions
+source("metric_functions.R")
+
 # correction factor for SD
 correctSD <- function(a,n){
   # see section 1.1 of Beran (1994)
@@ -33,19 +42,7 @@ correctSD <- function(a,n){
   cf^0.25
 }
 
-# remove the rep column
-siminput[["rep"]] <- NULL
-# correct SD by the Beran formula
-siminput[["adjSD"]] <- correctSD(siminput[["autoregressive"]],siminput[["n"]])*siminput[["ER_withinSD"]]
-
-# Predetermine seed values and store siminput -----------------------------
-set.seed(1999)
-siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
-saveRDS(siminput, file = "siminput.RData")
-
-# ==================================
-# define functions
-# ==================================
+# VAR(1) data generation function
 simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, correlation = 0, ER_withinSD = 1, ER_mean = 0, ...){
   # Assign autoregressive regression parameter to diagonal;
   # VAR.sim needs at least 2 columns so +1 if ERn == 1.
@@ -60,8 +57,59 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, correlation = 0, 
   # Output a matrix/vector with specified ERn; Set desired mean
   out[,1:ERn, drop = FALSE] + ER_mean
 }
-# Load all metric functions
-source("metric_functions.R")
+
+
+# Function to calculate partial correlation between indices and parameters
+
+print_result <- function(timemode="successive", lParam, lIndex){
+  nc <- length(lParam)+n_singleoutput_metric
+  # remove the simulation input parameter columns
+  output <- (tab[,-c(1:nc)])
+
+  # 0 = suc.second, 1 = mom.all
+  if (timemode == "successive"){
+    output <- output[, seq_len(ncol(output)) %% 3 == 0]
+  } else { #"allmoment"
+    output <- output[, seq_len(ncol(output)) %% 3 == 1]
+  }
+  output <- cbind((tab[,  1:nc]),output)
+  colnames(output) <- c(lParam,lIndex)
+
+  res_pcor <- data.frame()
+  res_pcpvalue <- data.frame()
+  for (i in 1:length(lIndex)){
+    dftemp <- cbind(output[,lIndex[i]],output[,1:length(lParam)])
+    tryCatch({
+      pcortemp <- round(pcor(dftemp)$estimate[1,],4)
+      pcorpvalue <- round(pcor(dftemp)$p.value[1,],4)
+    }, error = function(e){
+      # assign NA to pcor results as pcor throws error upon NA input
+      pcortemp <- NA
+      pcorpvalue <- NA
+    })
+    res_pcor <- rbind.data.frame(res_pcor,data.frame(as.list(pcortemp)))
+    res_pcpvalue  <- rbind.data.frame(res_pcpvalue,data.frame(as.list(pcorpvalue)))
+    res_pcor[i,1] <- lIndex[i]
+    res_pcpvalue[i,1] <- lIndex[i]
+  }
+  list(partial_correlation=res_pcor,pcor.pvalue=res_pcpvalue)
+}
+
+
+
+#======================
+# Simulation: Data generation
+#======================
+
+# remove the rep column
+siminput[["rep"]] <- NULL
+# correct SD by the Beran formula
+siminput[["adjSD"]] <- correctSD(siminput[["autoregressive"]],siminput[["n"]])*siminput[["ER_withinSD"]]
+
+# Predetermine seed values and store siminput -----------------------------
+siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
+saveRDS(siminput, file = "siminput.RData")
+
 
 # prepare parallel processing
 library(doSNOW)
@@ -86,6 +134,11 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
                       ER_mean = ER_mean)
 
   out <- c(
+    autoregressive,
+    adjSD,
+    correlation,
+    ERn,
+    n,
     metric_person_within_SD(df),
     metric_person_between_SD(df),
     metric_person_SD(df),
@@ -98,12 +151,13 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
     metric_person_vegan(df, "chord"),
     metric_person_vegan(df, "chisq")
   )
-  # CJ: If the sim takes very long or uses a lot of memory, print to text files.
-  # CJ: If not, just return the output.
-  # CJ: We have to see which works best when we start running a larger chunk!
-  # write.table(x = t(out), file = sprintf("results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
-  # NULL
-  out
+
+  # Option 1: print text files
+  write.table(x = t(out), file = sprintf("results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
+  NULL
+
+  # Option 2: print to R environment variable
+  # out
 }
 end_time <- Sys.time()
 #Close cluster
@@ -113,17 +167,31 @@ time_per_row <- as.numeric(end_time - time_start) / nrow(siminput)
 writeLines(paste0("Time per row: ", time_per_row), "time_per_row.txt")
 
 # End of simulation -------------------------------------------------------
-stop("End of simulation")
+print("End of simulation")
 
 #======================
-# evaluate indices' performance
+# Simulation: Evaluate indices' performance
 #======================
 
+if (is.null(tab)){
+  txt_files_ls = list.files(pattern="result*")
+  txt_files_df <- lapply(txt_files_ls, function(x) {read.table(file = x, header = F, sep ="\t")})
+  tab <-do.call("rbind", lapply(txt_files_df, as.matrix))
+}
 
 library(ppcor) # partial correlation
-source("func_sim1performance.R")
+# source("func_sim1performance.R")
+source("func_sim1performance_new.R")
+
+
 
 n_singleoutput_metric <- 2
+# the below list is in the same order as what was inserted each row during loop
+list_parameters <- c("Autoregression",
+                     "withinStgy_SD",
+                     "Correlation",
+                     "NER",
+                     "nobs")
 # the below list has to match what specified in sim1_VAR(1).R
 list_metrics <- c("withinSD",
                   "betweenSD",
@@ -139,5 +207,12 @@ list_metrics <- c("withinSD",
                   "chord",
                   "chisq"
 )
-# allmoment, successive, or composite
-print_result("successive")
+
+# allmoment OR successive
+res.suc <- print_result("successive", list_parameters, list_metrics)
+res.amm <- print_result("allmoment", list_parameters, list_metrics)
+
+# print results - successive difference
+res.suc
+# print results - all-moment comparison
+res.amm

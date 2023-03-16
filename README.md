@@ -2,7 +2,7 @@
 
 # Readme <a href='https://osf.io/zcvbs/'><img src='worcs_icon.png' align="right" height="139" /></a>
 
-<!-- Please add a brief introduction to explain what the project is about    -->
+This is the github of my manuscript "A Theory-Informed Emotion Regulation Variability Index: Bray-Curtis Dissimilarity". You can reproduce the analysis results in the manuscript following this readme. 
 
 ## Where do I start?
 
@@ -11,7 +11,7 @@ Afterwards, follow the "Reproducibility" section to reproduce the simulation and
 
 ## Project structure
 
-Below we list R scripts, other files, and folders.
+Tables of R scripts, other files, and folders.
 
 ### R scripts
 
@@ -21,20 +21,12 @@ prepare_data.R            | Reanalysis: load raw data from OSF | Optional; run b
 sim1_VAR(1).R                 | Simulation 1: data generation with VAR(1) | Run to reproduce results (step 1)
 sim2_lorenz.R                 | Simulation 2: data generation with Lorenz system | Run to reproduce results (step 2)
 reanalysis_main.R                 | Reanalysis: descriptive statistics and main analyses | Run to reproduce results (step 3)
+func_indices.R                 | Dissimilarity indices for simulations & reanalyses | Required; read only
 func_sim1performance.R                 | Index performance evaluation for simulation 1| Required; read only
-func_indices.R                 | Reproducible R environment | Required; read only
-func_rean_MLM.R                 | Reproducible R environment | Required; read only
-func_rean_calculateERV.R                 | Reproducible R environment | Required; read only
+func_rean_calculateERV.R                 | Reanalysis part 1: calculate dissimilarity indices | Required; read only
+func_rean_MLM.R                 | Reanalysis part 2: multilevel models | Required; read only
 
 
-
-### Folders
-<!--  You can add rows to this table, using "|" to separate columns.         -->
-Folder| Description                | Usage         
-------------------------- | -------------------------- | --------------
-manuscript | Folder that holds manuscript pdfs (empty at the moment)      | Read only
-RSD                 | R scripts that calculate [relative variability (Mestdagh et al., 2018)](https://ppw.kuleuven.be/okp/software/relative_variability/) | Required; Read only     
-codebook| Codebooks for [dataset 1 - 3 (Blanke et al., 2020)](https://osf.io/mxjfh/)      | Read only
 
 ### Other Files
 
@@ -49,6 +41,13 @@ dfraw1.csv                | [Dataset 1 (Blanke et al., 2020)](https://osf.io/mxj
 dfraw2.csv                | [Dataset 2 (Blanke et al., 2020)](https://osf.io/mxjfh/) for reanalysis| Read only     
 dfraw3.csv                | [Dataset 3 (Blanke et al., 2020)](https://osf.io/mxjfh/) for reanalysis| Read only     
 
+
+### Folders
+Folder| Description                | Usage         
+------------------------- | -------------------------- | --------------
+manuscript | Folder that holds manuscript pdfs (empty at the moment)      | Read only
+RSD                 | R scripts that calculate [relative variability (Mestdagh et al., 2018)](https://ppw.kuleuven.be/okp/software/relative_variability/) | Required; Read only     
+codebook| Codebooks for [dataset 1 - 3 (Blanke et al., 2020)](https://osf.io/mxjfh/)      | Read only
 
 
 
