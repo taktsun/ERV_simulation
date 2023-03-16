@@ -1,5 +1,6 @@
 
 
+
 # Readme <a href='https://osf.io/zcvbs/'><img src='worcs_icon.png' align="right" height="139" /></a>
 
 This is the github of my manuscript "A Theory-Informed Emotion Regulation Variability Index: Bray-Curtis Dissimilarity". You can reproduce the analysis results in the manuscript following this readme. 
@@ -58,7 +59,27 @@ codebook| Codebooks for [dataset 1 - 3 (Blanke et al., 2020)](https://osf.io/mxj
 <!--  * A contributor code of conduct, https://www.contributor-covenant.org/ -->
 
 # Reproducibility
-Please refer to the vignette on [reproducing a WORCS project](https://cjvanlissa.github.io/worcs/articles/reproduce.html) for step by step advice to reproduce the analyses in this project.
+Reproduce the results by these 5 steps.
+
+ 1. Install RStudio and R
+ 2. Install WORCS dependencies
+		
+		install.packages("worcs", dependencies = TRUE)
+		tinytex::install_tinytex()
+		renv::consent(provided = TRUE)
+		
+ 3. Clone this repo (https://github.com/taktsun/ERV_simulation) to your RStudio
+ 4. Restore the package dependencies
+	
+
+	    renv::restore()
+
+ 5. Then run 3 R scripts to reproduce the results
+		- sim1_VAR(1).R
+		- sim2_lorenz.R
+		- reanalysis_main.R
+
+Step 1 to 4 are detailed in the vignette on [reproducing a WORCS project](https://cjvanlissa.github.io/worcs/articles/reproduce.html).
 
 
 <!-- If your project deviates from the steps outlined in the vignette on     -->
