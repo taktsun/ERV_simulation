@@ -4,7 +4,9 @@ library("vegan")
 library(data.table)
 setDTthreads(threads = 1) # so it won't take up the parallel processing for running simulation
 library(ppcor) # partial correlation
-
+#======================
+# simulation setup
+#======================
 # set seed to reproduce exact results
   seed = 1999
   set.seed(seed)
@@ -21,6 +23,9 @@ library(ppcor) # partial correlation
   )
 
 
+# ==================================
+# define functions
+# ==================================
 # self-defined functions
   source("func_indices.R")
   specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
@@ -169,6 +174,9 @@ genresult <- function( nobs = 100, simrep = 1, ERn = 6, xyonly = FALSE, seed = 1
     output
   }
 
+#======================
+# Simulation: Data generation
+#======================
 # prepare parallel processing
 rootlorenz <- lorenz()
 rootlorenz <- as.matrix(cbind(rootlorenz$x, rootlorenz$y, rootlorenz$z))
@@ -203,6 +211,9 @@ dfcombine <- as.data.frame(tab)
 # out.tmp <- lsimwrapper(siminput = siminput)
 # dfcombine <- as.data.frame(out.tmp)
 
+#======================
+# Simulation: Evaluate indices' performance
+#======================
 respcor <- NULL
 for (i in 1:length(list_metrics)){
   tmpres<- pcor(dfcombine[dfcombine$prob>0.0,c("prob","ERn","nobs",list_metrics[i])])$estimate[,4]
@@ -210,17 +221,7 @@ for (i in 1:length(list_metrics)){
   respcor<- rbind(respcor,tmpres)
 }
 respcor <- as.data.frame(respcor)
-rescor <- NULL
-for (i in 1:length(list_metrics)){
-  tmpres<- cor(dfcombine[,c("prob","ERn","nobs",list_metrics[i])])[,4]
-  tmpres[4] <- list_metrics[i]
-  rescor<- rbind(rescor,tmpres)
-}
-rescor <- as.data.frame(rescor)
-colnames(rescor) <- c("pSwitch", "N_ER", "n_obs", "index")
 rownames(respcor) <-  1:length(list_metrics)
-rownames(rescor) <-  1:length(list_metrics)
 
 # write results as .csv files
 write.csv(respcor,paste0("sim2_respcor_rep",siminput$rep[1]," ",Sys.Date(),".csv")) # partial correlation
-# write.csv(rescor,paste0("sim2_rescor_rep ",siminput$rep[1]," ",Sys.Date(),".csv")) # correlation
