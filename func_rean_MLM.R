@@ -16,7 +16,10 @@ preparemmresult <- function (m){
         "ranef" = VarCorr(m)[1:(length(attributes(m$terms)$term.labels)+1)],
         residual = m$sigma^2,
         phi = coef(m$modelStruct$corStruct, unconstrained = FALSE), # needs coef to make this work
-        nobs = nobs(m))
+        nobs = nobs(m),
+        RMSE = performance_rmse(m, normalized = FALSE)
+        )
+
 }
 
 # a wrapper to extract fixed effect and random effect of an MLM (brms)
@@ -29,7 +32,8 @@ preparemmresult.brm <- function (m){
         ranef = VarCorr(m)$ppnr$sd[1:nrow(fixef(m))],
         residual = rep(VarCorr(m)$residual__$sd[1]^2,nrow(fixef(m))),
         phi = rep(summary(m)$cor_pars[1],nrow(fixef(m))),
-        nobs = rep(summary(m)$nobs,nrow(fixef(m)))
+        nobs = rep(summary(m)$nobs,nrow(fixef(m))),
+        RMSE = sqrt(sum(residuals(m)[,1]^2)/length(residuals(m)[,1]))
   )
 
 }
