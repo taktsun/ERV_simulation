@@ -83,7 +83,7 @@ if (datasource==2){
                                         random=~1+ moment_bray.bal.succw+ moment_bray.gra.succw | ppnr, correlation = corAR1(),
                                         control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
 }
-modelmoment.bray.part.suc
+
 resmodelmomentest <- rbind(
   preparemmresult(modelmoment.intercept),
   preparemmresult(modelmoment.withinRSD),
