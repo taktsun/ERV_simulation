@@ -269,6 +269,17 @@
         "tidyselect"
       ]
     },
+    "bayestestR": {
+      "Package": "bayestestR",
+      "Version": "0.13.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "caecf6cf095962f3d6645ddab4c691e8",
+      "Requirements": [
+        "datawizard",
+        "insight"
+      ]
+    },
     "betapart": {
       "Package": "betapart",
       "Version": "1.5.6",
@@ -637,6 +648,16 @@
       "Repository": "CRAN",
       "Hash": "aecef50008ea7b57c76f1cb5c127fb02",
       "Requirements": []
+    },
+    "datawizard": {
+      "Package": "datawizard",
+      "Version": "0.6.5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "6af559e24be9cec37516e37a00a6cfc3",
+      "Requirements": [
+        "insight"
+      ]
     },
     "deSolve": {
       "Package": "deSolve",
@@ -1152,6 +1173,14 @@
       "Hash": "1deaf1de3eac7e1d3377954b3a283652",
       "Requirements": []
     },
+    "insight": {
+      "Package": "insight",
+      "Version": "0.19.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "b7a721ab3228268ed3a4ac3d585a09bf",
+      "Requirements": []
+    },
     "isoband": {
       "Package": "isoband",
       "Version": "0.2.7",
@@ -1617,6 +1646,18 @@
         "dplyr",
         "lme4",
         "numDeriv"
+      ]
+    },
+    "performance": {
+      "Package": "performance",
+      "Version": "0.10.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "912b1a00a859efe958c7b9bae210db18",
+      "Requirements": [
+        "bayestestR",
+        "datawizard",
+        "insight"
       ]
     },
     "permute": {

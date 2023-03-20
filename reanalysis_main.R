@@ -57,4 +57,3 @@ resMLM_all<-rbind(resMLM1,resMLM2,resMLM3)
 # write.csv(desstat2,"desstat2.csv")
 # write.csv(desstat3,"desstat3.csv")
 # write.csv(resMLM_all,"reanalysis_results.csv")
-resMLM1
