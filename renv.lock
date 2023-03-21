@@ -170,17 +170,6 @@
       "Hash": "2042cd9759cc89a453c4aefef0ce9aae",
       "Requirements": []
     },
-    "StanHeaders": {
-      "Package": "StanHeaders",
-      "Version": "2.26.16",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "3f1f32cc549013b73cb5b2c3c2675559",
-      "Requirements": [
-        "RcppEigen",
-        "RcppParallel"
-      ]
-    },
     "TTR": {
       "Package": "TTR",
       "Version": "0.24.3",
@@ -378,7 +367,6 @@
         "nleqslv",
         "nlme",
         "posterior",
-        "rstan",
         "rstantools",
         "shinystan"
       ]
@@ -2099,26 +2087,6 @@
       "Hash": "1de7ab598047a87bba48434ba35d497d",
       "Requirements": []
     },
-    "rstan": {
-      "Package": "rstan",
-      "Version": "2.26.16",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "a3a1840761f77eeaba29616d6aeb7588",
-      "Requirements": [
-        "BH",
-        "Rcpp",
-        "RcppEigen",
-        "RcppParallel",
-        "StanHeaders",
-        "V8",
-        "ggplot2",
-        "gridExtra",
-        "inline",
-        "loo",
-        "pkgbuild"
-      ]
-    },
     "rstantools": {
       "Package": "rstantools",
       "Version": "2.2.0",
@@ -2241,7 +2209,6 @@
         "gtools",
         "markdown",
         "reshape2",
-        "rstan",
         "shiny",
         "shinyjs",
         "shinythemes",

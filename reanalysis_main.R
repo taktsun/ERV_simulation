@@ -1,5 +1,5 @@
+# These packages aren't on CRAN. Install manually.
 # remotes::install_github("wviechtb/esmpack")
-# may need to reinstall the latest versions of the below packages (dependency of brms) for brms to work in R 4.2
 # remove.packages(c("StanHeaders", "rstan"))
 # install.packages(c("BH", "StanHeaders", "Rcpp", "RcppEigen", "RcppParallel", "inline", "loo", "pkgbuild", "rstan"))
 # install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
