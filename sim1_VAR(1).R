@@ -148,12 +148,12 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
     metric_person_within_SD(df),
     metric_person_between_SD(df),
     metric_person_SD(df),
-    metric_person_beta(df, "bray"),
-    metric_person_beta(df, "bray",".bal"),
-    metric_person_beta(df, "bray",".gra"),
-    metric_person_beta(df, "ruz"),
-    metric_person_beta(df, "ruz",".bal"),
-    metric_person_beta(df, "ruz",".gra"),
+    metric_person_beta(df, "bray"),        # Bray-Curtis dissimilarity: Full index
+    metric_person_beta(df, "bray",".bal"), # Bray-Curtis dissimilarity: Replacement subscomponent
+    metric_person_beta(df, "bray",".gra"), # Bray-Curtis dissimilarity: Nestedness subcomponent
+    metric_person_beta(df, "ruz"),         # Jaccard dissimilarity: Full index
+    metric_person_beta(df, "ruz",".bal"),  # Jaccard dissimilarity: Replacement subscomponent
+    metric_person_beta(df, "ruz",".gra"),  # Jaccard dissimilarity: Nestedness subcomponent
     metric_person_vegan(df, "chord"),
     metric_person_vegan(df, "chisq")
   )
@@ -200,12 +200,12 @@ list_metrics <- c("withinSD",
                   "betweenSD",
                   # person-level/non-temporal indices go above
                   "SD",
-                  "bray",     #Bray-Curtis dissimilarity full index
-                  "bray.bal", #Bray-Curtis dissimilarity replacement subcomponent
-                  "bray.gra", #Bray-Curtis dissimilarity nestedness subcomponent
-                  "jaccard",
-                  "jaccard.bal",
-                  "jaccard.gra",
+                  "bray",          #Bray-Curtis dissimilarity full index
+                  "bray.bal",      #Bray-Curtis dissimilarity replacement subcomponent
+                  "bray.gra",      #Bray-Curtis dissimilarity nestedness subcomponent
+                  "jaccard",       #Jaccard dissimilarity: Full index
+                  "jaccard.bal",   #Jaccard dissimilarity: replacement subcomponent
+                  "jaccard.gra",   #Jaccard dissimilarity: nestedness subcomponent
                   "chord",
                   "chisq"
 )

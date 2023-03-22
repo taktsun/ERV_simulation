@@ -12,6 +12,12 @@
 #     cw = within-person component, given by person-mean-centering
 #     cb = between-person component, given by person-mean - grand-mean.
 #        this component does not change over time.
+#
+# Variable names - Bray Curtis dissimilarity:
+#  .all = full index
+#  .bal = replacement subcomponent
+#  .gra = nestedness subcomponent
+
 
 loadESMcalculateERV <- function (datasource){
 #------------------------------
