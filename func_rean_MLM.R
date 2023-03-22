@@ -1,7 +1,6 @@
-# self defined functions
-
-# a function to extract n characters from the right of a string
-# adapted from: https://stackoverflow.com/questions/7963898/extracting-the-last-n-characters-from-a-string-in-r
+# extract n characters from the right of a string
+#   adapted from: https://stackoverflow.com/questions/7963898/extracting-the-last-n-characters-from-a-string-in-r
+#   useful for preparing summary of results later in preparemmresult.brm
 substrRight <- function(x, n){
   substr(x, nchar(x)-n+1, nchar(x))
 }
@@ -28,7 +27,9 @@ preparemmresult.brm <- function (m){
         FEest = fixef(m)[,1],
         SE = fixef(m)[,2],
         DF = ifelse(substrRight(rownames(fixef(m)),2)=="cb",summary(m)$ngrps$ppnr,summary(m)$nobs),
-        pvalue = rep("brms",length(fixef(m)[,1])),
+        pvalue = pt(q = fixef(m)[,1]/fixef(m)[,2],
+                    df = ifelse(substrRight(rownames(fixef(m)),2)=="cb",summary(m)$ngrps$ppnr,summary(m)$nobs),
+                    lower.tail = FALSE)*2,
         ranef = VarCorr(m)$ppnr$sd[1:nrow(fixef(m))],
         residual = rep(VarCorr(m)$residual__$sd[1]^2,nrow(fixef(m))),
         phi = rep(summary(m)$cor_pars[1],nrow(fixef(m))),
@@ -38,7 +39,7 @@ preparemmresult.brm <- function (m){
 
 }
 
-# the main function to be used
+# the main function to be called in reanalysis_main.R
 MLMresults <- function(df, datasource,completeIndices = FALSE){
 modelmoment.intercept<-NULL
 modelmoment.withinRSD<-NULL
@@ -47,12 +48,16 @@ modelmoment.betweenRSD.suc<-NULL
 modelmoment.bray.all.suc<-NULL
 modelmoment.bray.part.suc<-NULL
 
+# completeIndices is default to be FALSE:
+# which corresponds to the manuscript, where we estimated multilevel models with available observations for each index
+# if completeIndices=TRUE, we exclude an observation if there is ANY missing/NA ER variability indices
 if(completeIndices){
   df<- df[df$b_completeIndices,]
 }else{
   df<- df[df$b_completeER,]
 }
 
+# Multilevel modeling (MLM) goes below
 modelmoment.intercept <- lme(fixed=moment_meanNA ~1,
                         data=df,
                         random=~1 | ppnr, correlation = corAR1(),
@@ -74,7 +79,7 @@ modelmoment.bray.all.suc <- lme(fixed=moment_meanNA ~ moment_bray.all.succw+mome
                                      data=df,
                                      random=~1+ moment_bray.all.succw | ppnr, correlation = corAR1(),
                                      control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
-if (datasource==2){
+if (datasource==2){ # Bray-Curtis subcomponent MLM does not converge with nlme so brms is used
   modelmoment.bray.part.suc <- brm((moment_meanNA) ~    (moment_bray.bal.succw) + (moment_bray.gra.succw)+
                                           moment_bray.bal.succb+ moment_bray.gra.succb+
                                  (1+moment_bray.bal.succw + moment_bray.gra.succw|ppnr) + ar(),
@@ -104,7 +109,9 @@ if (datasource==2){
 }else{
   resmodelmomentest<- rbind(
     resmodelmomentest,
-    preparemmresult(modelmoment.bray.part.suc)) # error for dataset2
+    # the below line will give an error for Dataset2: Bray-Curtis subcomponent MLM
+    # because it was estimated by brms
+    preparemmresult(modelmoment.bray.part.suc))
 }
 
 cbind( dataset = rep(datasource,nrow(resmodelmomentest)),resmodelmomentest)
