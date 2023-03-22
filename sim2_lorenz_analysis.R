@@ -1,16 +1,18 @@
-suppressMessages(library('nonlinearTseries'))
-library("betapart")
-library("vegan")
+library(nonlinearTseries)
+library(betapart)
+library(vegan)
 library(data.table)
 setDTthreads(threads = 1) # so it won't take up the parallel processing for running simulation
 library(ppcor) # partial correlation
+library(doSNOW)
+library(parallel)
+
 #======================
 # simulation setup
 #======================
 # set seed to reproduce exact results
   seed = 1999
   set.seed(seed)
-  siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
 
 # simulation paramaters
   siminput <- expand.grid(
@@ -21,6 +23,8 @@ library(ppcor) # partial correlation
     # Number of ER strategies
     ERn = c(3,6,9)
   )
+# assign the a seed (dependent on the earlier seed set) to each simulation repetition
+  siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
 
 
 # ==================================
@@ -32,42 +36,42 @@ library(ppcor) # partial correlation
 
 # a list of names that correspond to the indices output specified in calcdis
   list_metrics <- c("withinRSD",
-                  "betweenRSD",
-                  "betweenRSD.amm",
-                  "betweenRSD.suc",
-                  "BrayCurtisFull.amm",
-                  "BrayCurtisFull.suc",
-                  "BrayCurtisRepl.amm",
-                  "BrayCurtisRepl.suc",
-                  "BrayCurtisNest.amm",
-                  "BrayCurtisNest.suc",
-                  "JaccardFull.amm",
-                  "JaccardFull.suc",
-                  "JaccardRepl.amm",
-                  "JaccardRepl.suc",
-                  "JaccardNest.amm",
-                  "JaccardNest.suc",
-                  "Chord.amm",
-                  "Chord.suc",
-                  "Chisq.amm",
-                  "Chisq.suc"
+                  "betweenRSD.single",
+                  "betweenRSD.mom.all",
+                  "betweenRSD.suc.second",
+                  "BrayCurtisFull.mom.all",
+                  "BrayCurtisFull.suc.second",
+                  "BrayCurtisRepl.mom.all",
+                  "BrayCurtisRepl.suc.second",
+                  "BrayCurtisNest.mom.all",
+                  "BrayCurtisNest.suc.second",
+                  "JaccardFull.mom.all",
+                  "JaccardFull.suc.second",
+                  "JaccardRepl.mom.all",
+                  "JaccardRepl.suc.second",
+                  "JaccardNest.mom.all",
+                  "JaccardNest.suc.second",
+                  "Chord.mom.all",
+                  "Chord.suc.second",
+                  "Chisq.mom.all",
+                  "Chisq.suc.second"
 )
 
 # function to calculate dissimilarity indices from simulated datasets
   calcdis <- function(matx, returnparam = FALSE){
 
     # refer to metric_functions.R on the output
-    out <- c(sd.ws = metric_person_within_SD(matx),
-           sd.bs = metric_person_between_SD(matx),
-           sd = metric_person_SD(matx),
-           bray = metric_person_beta(matx, "bray"),
-           dBCs = metric_person_beta(matx, "bray",".bal"),
-           dBCe = metric_person_beta(matx, "bray",".gra"),
-           jaccard = metric_person_beta(matx, "ruz"),
-           djs = metric_person_beta(matx, "ruz",".bal"),
-           dje = metric_person_beta(matx, "ruz",".gra"),
-           chord = metric_person_vegan(matx, "chord"),
-           chisq = metric_person_vegan(matx, "chisq")
+    out <- c(withinRSD = metric_person_within_SD(matx),
+             betweenRSD.single = metric_person_between_SD(matx),
+           betweenRSD = metric_person_SD(matx),
+           BrayCurtisFull = metric_person_beta(matx, "bray"),
+           BrayCurtisRepl = metric_person_beta(matx, "bray",".bal"),
+           BrayCurtisNest = metric_person_beta(matx, "bray",".gra"),
+           JaccardFull = metric_person_beta(matx, "ruz"),
+           JaccardRepl = metric_person_beta(matx, "ruz",".bal"),
+           JaccardNest = metric_person_beta(matx, "ruz",".gra"),
+           Chord = metric_person_vegan(matx, "chord"),
+           Chisq = metric_person_vegan(matx, "chisq")
   )
   # this "returnparam" is a debugging option.
   # If TRUE, returns the mean, sd, autocorrelation, and correlation of the input dataset
@@ -178,10 +182,8 @@ genresult <- function( nobs = 100, simrep = 1, ERn = 6, xyonly = FALSE, seed = 1
 # Simulation: Data generation
 #======================
 # prepare parallel processing
-rootlorenz <- lorenz()
+rootlorenz <- lorenz(do.plot = FALSE)
 rootlorenz <- as.matrix(cbind(rootlorenz$x, rootlorenz$y, rootlorenz$z))
-library(doSNOW)
-library(parallel)
 nclust <- parallel::detectCores()
 cl <- makeCluster(nclust)
 registerDoSNOW(cl)
@@ -206,8 +208,7 @@ stopCluster(cl)
 time_per_row <- as.numeric(end_time - time_start) / nrow(siminput)
 dfcombine <- as.data.frame(tab)
 
-
-# serial processing
+# serial processing - might be faster when the number of repetition is low
 # out.tmp <- lsimwrapper(siminput = siminput)
 # dfcombine <- as.data.frame(out.tmp)
 
