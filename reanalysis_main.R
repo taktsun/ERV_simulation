@@ -23,9 +23,11 @@ source("RSD/maximumVAR.R")
 source("RSD/relativeSD.R")
 source("RSD/checkOutput.R")
 
-source("func_indices.R")
+# load function to calculate moment-level ER variability indices
 source("func_rean_calculateERV.R")
+# load function to calculate descriptive statistics
 source("func_rean_desStat.R")
+# load function to calculate multilevel modeling
 source("func_rean_MLM.R")
 
 
@@ -34,20 +36,18 @@ source("func_rean_MLM.R")
 # Calculate ER variability indices
     # warnings from calculating relative SD:
     # all-zero ratings return NaN due to division of zero
-dfERV1<-loadESMdata(1)
-dfERV2<-loadESMdata(2)
-dfERV3<-loadESMdata(3)
+dfERV1<-loadESMcalculateERV(1)
+dfERV2<-loadESMcalculateERV(2)
+dfERV3<-loadESMcalculateERV(3)
 
-# Prepare descriptive statistics for SM5
+# Prepare descriptive statistics for supplemental material 5
 desstat1 <- summarydesstat(dfERV1)
 desstat2 <- summarydesstat(dfERV2)
 desstat3 <- summarydesstat(dfERV3)
 
 # Calculate multilevel modeling results
-    # completeIndices = FALSE produces results of the manuscript,
-    # which shows results of models with observations without NA/missing ER variability indices
-    # If you want to limit each model to includ eonly observations that has every ER variability index available,
-    # use completeIndices = TRUE
+    # completeIndices = FALSE: include all available observations
+    # completeIndices = TRUE : only include observations with no missing/NA variability indices
 resMLM1 <- MLMresults(dfERV1,1,completeIndices = FALSE)
 resMLM2 <- MLMresults(dfERV2,2,completeIndices = FALSE)
 resMLM3 <- MLMresults(dfERV3,3,completeIndices = FALSE)
@@ -57,3 +57,4 @@ resMLM_all<-rbind(resMLM1,resMLM2,resMLM3)
 # write.csv(desstat2,"desstat2.csv")
 # write.csv(desstat3,"desstat3.csv")
 # write.csv(resMLM_all,"reanalysis_results.csv")
+
