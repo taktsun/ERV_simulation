@@ -76,11 +76,11 @@ Reproduce the results by these 5 steps.
 
 	    renv::restore()
 
- 5. Then run 3 R scripts to reproduce the results. Start new R session (Ctrl+Shift+F10) before you run each script.
+ 5. Run 3 R scripts to reproduce the results. Start new R session (Ctrl+Shift+F10) before you run each script.
  
-		- sim1_VAR(1).R
-		- sim2_lorenz.R
-		- reanalysis_main.R
+	- sim1_VAR(1).R
+	- sim2_lorenz.R
+	- reanalysis_main.R
 
 Step 1 to 4 are detailed in the vignette on [reproducing a WORCS project](https://cjvanlissa.github.io/worcs/articles/reproduce.html).
 
