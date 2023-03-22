@@ -69,8 +69,7 @@ Reproduce the results by these 5 steps.
 		tinytex::install_tinytex()
 		renv::consent(provided = TRUE)
 		
- 3. [Clone](https://resources.github.com/github-and-rstudio/#:~:text=Clone%20the%20repository%20with%20RStudio&text=On%20GitHub%2C%20navigate%20to%20the,RStudio%20on%20your%20local%20environment.)
- this repo (https://github.com/taktsun/ERV_simulation) to your RStudio
+ 3. [Clone](https://resources.github.com/github-and-rstudio/#:~:text=Clone%20the%20repository%20with%20RStudio&text=On%20GitHub%2C%20navigate%20to%20the,RStudio%20on%20your%20local%20environment.) this repo (https://github.com/taktsun/ERV_simulation) to your RStudio
  4. Restore the package dependencies
 	
 
@@ -84,16 +83,26 @@ Reproduce the results by these 5 steps.
 
 Step 1 to 4 are detailed in the vignette on [reproducing a WORCS project](https://cjvanlissa.github.io/worcs/articles/reproduce.html).
 
+## Troubleshooting with rstan and StanHeaders
+
+rstan and StanHeaders are two required packages to estimate multilevel modeling with brms.
+However, compatibility of the CRAN versions of the two packages on R version >= 4.2 is not good.
+If you encounter problems with running brms models (in reanalysis_main.R), run the below two lines to install the developer versions of rstan and StanHeaders:
+
+	remove.packages(c("StanHeaders", "rstan"))
+	install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
 <!-- If your project deviates from the steps outlined in the vignette on     -->
 <!-- reproducing a WORCS project, please provide your own advice for         -->
 <!-- readers here.                                                           -->
 
-### More about WORCS
+### Adherence to WORCS
 
 This project uses the Workflow for Open Reproducible Code in Science (WORCS) to
 ensure transparency and reproducibility. The workflow is designed to meet the
-principles of Open Science throughout a research project. 
+principles of Open Science throughout a research project. We used WORCS for the simulation studies and data analysis, but we did not use WORCS for manuscript preparation.
+
+### More about WORCS
 
 To learn how WORCS helps researchers meet the TOP-guidelines and FAIR principles,
 read the preprint at https://osf.io/zcvbs/
