@@ -27,7 +27,7 @@ preparemmresult.brm <- function (m){
         FEest = fixef(m)[,1],
         SE = fixef(m)[,2],
         DF = ifelse(substrRight(rownames(fixef(m)),2)=="cb",summary(m)$ngrps$ppnr,summary(m)$nobs),
-        pvalue = pt(q = fixef(m)[,1]/fixef(m)[,2],
+        pvalue = pt(q = abs(fixef(m)[,1]/fixef(m)[,2]),
                     df = ifelse(substrRight(rownames(fixef(m)),2)=="cb",summary(m)$ngrps$ppnr,summary(m)$nobs),
                     lower.tail = FALSE)*2,
         ranef = VarCorr(m)$ppnr$sd[1:nrow(fixef(m))],
@@ -83,7 +83,7 @@ if (datasource==2){ # Bray-Curtis subcomponent MLM does not converge with nlme s
   modelmoment.bray.part.suc <- brm((moment_meanNA) ~    (moment_bray.bal.succw) + (moment_bray.gra.succw)+
                                           moment_bray.bal.succb+ moment_bray.gra.succb+
                                  (1+moment_bray.bal.succw + moment_bray.gra.succw|ppnr) + ar(),
-                               data=df)
+                               data=df, seed = 1999)
 }else{
   # nlme cannot converge (singular convergence) for dataset2
   modelmoment.bray.part.suc <- lme(fixed=moment_meanNA ~ moment_bray.bal.succw+ moment_bray.gra.succw+

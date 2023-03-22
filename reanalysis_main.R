@@ -1,7 +1,6 @@
-# These packages aren't on CRAN. Install manually.
+# These packages aren't on CRAN. Install manually if brms throws error.
 # remotes::install_github("wviechtb/esmpack")
 # remove.packages(c("StanHeaders", "rstan"))
-# install.packages(c("BH", "StanHeaders", "Rcpp", "RcppEigen", "RcppParallel", "inline", "loo", "pkgbuild", "rstan"))
 # install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 library(betapart)
 library(vegan)
@@ -53,8 +52,8 @@ resMLM2 <- MLMresults(dfERV2,2,completeIndices = FALSE)
 resMLM3 <- MLMresults(dfERV3,3,completeIndices = FALSE)
 resMLM_all<-rbind(resMLM1,resMLM2,resMLM3)
 # output .csv if needed:
-# write.csv(desstat1,"desstat1.csv")
-# write.csv(desstat2,"desstat2.csv")
-# write.csv(desstat3,"desstat3.csv")
-# write.csv(resMLM_all,"reanalysis_results.csv")
+# write.csv(desstat1,"reanalysis_desstat1.csv")
+# write.csv(desstat2,"reanalysis_desstat2.csv")
+# write.csv(desstat3,"reanalysis_desstat3.csv")
+# write.csv(resMLM_all,"reanalysis_MLMsummary.csv")
 
