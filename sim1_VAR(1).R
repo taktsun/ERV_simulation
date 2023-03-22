@@ -1,3 +1,7 @@
+library(doSNOW)
+library(parallel)
+library(ppcor) # partial correlation
+
 options(scipen=999)
 
 #======================
@@ -7,6 +11,10 @@ options(scipen=999)
 # set seed to reproduce exact results
 set.seed(1999)
 
+# simulation data generation + ER variability calculation:
+# print to text file (TRUE), or store at R environment variable (FALSE)
+printtxtresult <- FALSE
+
 # study design
 siminput <- expand.grid(
   # reps
@@ -15,7 +23,7 @@ siminput <- expand.grid(
   n = c(30,70,100),
   # autocorrelation
   autoregressive = c(-0.09,0.12,0.33),
-  #  mean ER endorsement: now it is used to move the dataset up to avoid -ve values
+  #  mean ER endorsement: now it is used to move the dataset up to avoid negative values
   ER_mean = c(3),
   # within-strategy SD
   ER_withinSD = c(0.10,0.19,0.28),
@@ -33,7 +41,8 @@ siminput <- expand.grid(
 # Load all metric functions
 source("func_indices.R")
 
-# correction factor for SD
+# correction factor for SD: SD gets inflated when autocorrelation is high,
+# So it is adjusted according to Beran (1994). Beran, J. (1994). Statistics for long-memory processes.
 correctSD <- function(a,n){
   # see section 1.1 of Beran (1994)
   a<- abs(a)
@@ -112,15 +121,12 @@ saveRDS(siminput, file = "siminput.RData")
 
 
 # prepare parallel processing
-library(doSNOW)
-library(parallel)
 nclust <- parallel::detectCores()-1
 cl <- makeCluster(nclust)
 registerDoSNOW(cl)
 paths <- .libPaths()
 # run simulation
 time_start <- Sys.time()
-# EL: not sure why adding "paths = paths," bring error in my machine. Temporarily remove
 tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "vegan", "entropy"), .combine = rbind) %dopar% {
   # Set seed
   suppressMessages(attach(siminput[rownum, ]))
@@ -152,12 +158,14 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
     metric_person_vegan(df, "chisq")
   )
 
+  if (printtxtresult){
   # Option 1: print text files
   write.table(x = t(out), file = sprintf("results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
   NULL
-
+  }else{
   # Option 2: print to R environment variable
-  # out
+  out
+  }
 }
 end_time <- Sys.time()
 #Close cluster
@@ -173,19 +181,13 @@ print("End of simulation")
 # Simulation: Evaluate indices' performance
 #======================
 
+# if results are stored at .txt, read and combine the .txt output
 if (is.null(tab)){
   txt_files_ls = list.files(pattern="result*")
   txt_files_df <- lapply(txt_files_ls, function(x) {read.table(file = x, header = F, sep ="\t")})
   tab <-do.call("rbind", lapply(txt_files_df, as.matrix))
 }
 
-library(ppcor) # partial correlation
-# source("func_sim1performance.R")
-source("func_sim1performance_new.R")
-
-
-
-n_singleoutput_metric <- 2
 # the below list is in the same order as what was inserted each row during loop
 list_parameters <- c("Autoregression",
                      "withinStgy_SD",
@@ -193,22 +195,27 @@ list_parameters <- c("Autoregression",
                      "NER",
                      "nobs")
 # the below list has to match what specified in sim1_VAR(1).R
+# list person-level & non-temporal indices first, then moment-level indices
 list_metrics <- c("withinSD",
                   "betweenSD",
                   # person-level/non-temporal indices go above
-                  # remember to amend n_singleoutput_metric = number of such indices
                   "SD",
-                  "bray",
-                  "bray.bal",
-                  "bray.gra",
+                  "bray",     #Bray-Curtis dissimilarity full index
+                  "bray.bal", #Bray-Curtis dissimilarity replacement subcomponent
+                  "bray.gra", #Bray-Curtis dissimilarity nestedness subcomponent
                   "jaccard",
                   "jaccard.bal",
                   "jaccard.gra",
                   "chord",
                   "chisq"
 )
+# number of person-level or non-temporal indices
+# (in this case, within-strategy SD and between-strategy SD, so = 2)
+n_singleoutput_metric <- 2
 
-# allmoment OR successive
+
+
+# results: successive difference and all-moment comparison approaches
 res.suc <- print_result("successive", list_parameters, list_metrics)
 res.amm <- print_result("allmoment", list_parameters, list_metrics)
 
