@@ -4,10 +4,10 @@
     "Repositories": [
       {
         "Name": "CRAN",
-        "URL": "https://cloud.r-project.org"
+        "URL": "https://cran.rstudio.com"
       },
       {
-        "Name": "STAN",
+        "Name": "MRAN",
         "URL": "https://mc-stan.org/r-packages"
       }
     ]
@@ -178,7 +178,7 @@
       "Package": "StanHeaders",
       "Version": "2.26.16",
       "Source": "Repository",
-      "Repository": "STAN",
+      "Repository": "MRAN",
       "Hash": "3f1f32cc549013b73cb5b2c3c2675559",
       "Requirements": [
         "RcppEigen",
@@ -2145,7 +2145,7 @@
       "Package": "rstan",
       "Version": "2.26.16",
       "Source": "Repository",
-      "Repository": "STAN",
+      "Repository": "MRAN",
       "Hash": "a3a1840761f77eeaba29616d6aeb7588",
       "Requirements": [
         "BH",
