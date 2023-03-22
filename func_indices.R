@@ -55,13 +55,15 @@ metric_person_SD <- function(x){
   })
 }
 
-# composite person mean dissimilarity with various methods
+# return person mean dissimilarity with various comparison approaches
 # vegdist is a function to calculate dissimilarity in the vegan package
+# for chi-squared and chord distance
 metric_person_vegan <- function(x, method){
   matx <- as.matrix(vegdist(x,method = method))
   composite_mean(matx)
 }
-# composite person mean dissimilarity with various methods (see vegdist)
+# beta.pair.abund is a function to calculate bray-curtis (or jaccard) dissimilarity
+# in full indices or in subcomponents
 metric_person_beta <- function(x, index.family = "bray" , extract= ""){
   matx <- (beta.pair.abund(x, index.family = index.family))
   matx <- as.matrix(matx[[paste0("beta.",index.family,extract)]])
