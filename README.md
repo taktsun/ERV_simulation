@@ -26,6 +26,7 @@ func_indices.R                 | Dissimilarity indices for simulations & reanaly
 func_rean_desStat.R                 | Reanalysis 1: descriptive statistics | Required; read only
 func_rean_calculateERV.R                 | Reanalysis 2: calculate dissimilarity indices | Required; read only
 func_rean_MLM.R                 | Reanalysis 3: multilevel models | Required; read only
+packages_needed.R                 | States package dependency for renv | Required; read only
 
 
 
@@ -68,13 +69,15 @@ Reproduce the results by these 5 steps.
 		tinytex::install_tinytex()
 		renv::consent(provided = TRUE)
 		
- 3. Clone this repo (https://github.com/taktsun/ERV_simulation) to your RStudio
+ 3. [Clone](https://resources.github.com/github-and-rstudio/#:~:text=Clone%20the%20repository%20with%20RStudio&text=On%20GitHub%2C%20navigate%20to%20the,RStudio%20on%20your%20local%20environment.)
+ this repo (https://github.com/taktsun/ERV_simulation) to your RStudio
  4. Restore the package dependencies
 	
 
 	    renv::restore()
 
- 5. Then run 3 R scripts to reproduce the results
+ 5. Then run 3 R scripts to reproduce the results. Start new R session (Ctrl+Shift+F10) before you run each script.
+ 
 		- sim1_VAR(1).R
 		- sim2_lorenz.R
 		- reanalysis_main.R
