@@ -1,42 +1,27 @@
-#======================
-# common functions
-#======================
+#==================================================================================
+# functions to be used in calculating different variability indices in simulation
+#==================================================================================
 
+# return a vector of dissimilarity between t and t-1 in all observations (except t=1, where 0 is assigned)
 dis_suc_vector <- function(distmat){
   return (c(0,(distmat[row(distmat) == col(distmat) + 1])))
 }
 
-# person-level mean dissimilarity across all time points
-# 1. the *nrow(x)/(nrow(x)-1) adjustment is needed because there is one 0 in each row/column
-# 2. mom is a vector of one-to-all momentary comparisons
-# 3. suc is a vector of successive dissimilarity
-# 4. only 2nd observation onwards has has successive dissimilarity thus 2:n
+# return all-moment comparison and successive difference results per simulated dataset
 composite_mean <- function (matx){
+  # all-moment comparison approach
+    #  *nrow(x)/(nrow(x)-1) to adjust for the one occasion of 0 dissimilarity
+    # e.g., in all-moment comparison, moment 1 is compared with moment 1,2,3,...n
+    #       moment 1 vs moment 1 will give 0 dissimilarity
   mom <- apply(matx,1,mean)*nrow(matx)/(nrow(matx)-1)
+  # successive difference approach
   suc <- dis_suc_vector(matx)
+  # only 2nd observation onwards has successive dissimilarity thus 2:n
   c(mom.all= mean(mom), mom.second = mean(mom[2:nrow(matx)]), suc.second = mean(suc[2:nrow(matx)]))
 }
-#======================
-# metric functions
-#======================
-
-
-metric_mssd <- function(x){
-  tryCatch({
-  if(!is.matrix(x)) stop()
-    mean(rowSums((x[-1, ] - x[-nrow(x),])^2))
-  }, error = function(e){
-    mean((x[1:(length(x)-1)] - x[2:(length(x))])^2)
-  })
-}
-metric_mean_euclidean <- function(x){
-  tryCatch({
-  if(!is.matrix(x)) stop()
-    mean(sqrt(rowSums((x[-1, ] - x[-nrow(x),])^2)))
-  }, error = function(e){
-    mean(sqrt((x[1:(length(x)-1)] - x[2:(length(x))])^2))
-  })
-}
+#==================================================================================
+# functions that calculate specific variability indices
+#==================================================================================
 
 # between-strategy SD
 metric_person_between_SD <- function(x){
@@ -57,7 +42,7 @@ metric_person_within_SD <- function(x){
   })
 }
 
-# composite person mean dissimilarity by between-strategy SD
+# Mimicked Temporal Comparisons with between-strategy SD: all-moment comparison & successive difference approach
 metric_person_SD <- function(x){
   tryCatch({
   if(!is.matrix(x)) stop()
@@ -70,7 +55,8 @@ metric_person_SD <- function(x){
   })
 }
 
-# composite person mean dissimilarity with various methods (see vegdist)
+# composite person mean dissimilarity with various methods
+# vegdist is a function to calculate dissimilarity in the vegan package
 metric_person_vegan <- function(x, method){
   matx <- as.matrix(vegdist(x,method = method))
   composite_mean(matx)
@@ -82,21 +68,3 @@ metric_person_beta <- function(x, index.family = "bray" , extract= ""){
   composite_mean(matx)
 }
 
-# composite person mean KL divergence
-metric_person_KLdiv <- function(x){
-  # CJ: Avoid the decostand call, the algebra is just
-  # x <- x / rowSums(x) # Note: THis will fail until the time series are never zero
-  # The above line is already included in the KL.plugin
-  # The code below is really inefficient, try to rewrite as matrix algebra or vectorize it
-  tempdist <- c()
-  for (k in 1:(nrow(x)-1)){
-    for (j in (k+1):nrow(x)){
-      tempdist <- append(tempdist,(KL.plugin(x[k,],x[j,])))
-    }
-  }
-  tempdist <- as.matrix(tempdist)
-  mat.KLdiv <- matrix(0, nrow = nrow(x), ncol = nrow(x))
-  mat.KLdiv[lower.tri(mat.KLdiv, diag = FALSE)] <- tempdist
-  mat.KLdiv[upper.tri(mat.KLdiv)] <- t(mat.KLdiv)[upper.tri(mat.KLdiv)]
-  composite_mean(mat.KLdiv)
-}
