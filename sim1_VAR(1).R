@@ -13,7 +13,7 @@ set.seed(1999)
 
 # simulation data generation + ER variability calculation:
 # print to text file (TRUE), or store at R environment variable (FALSE)
-printtxtresult <- FALSE
+printtxtresult <- TRUE
 
 # study design
 siminput <- expand.grid(
