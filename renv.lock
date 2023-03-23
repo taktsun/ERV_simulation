@@ -8,6 +8,10 @@
       },
       {
         "Name": "MRAN",
+        "URL": "https://mran.microsoft.com"
+      },
+      {
+        "Name": "STAN",
         "URL": "https://mc-stan.org/r-packages"
       }
     ]
@@ -178,7 +182,7 @@
       "Package": "StanHeaders",
       "Version": "2.26.16",
       "Source": "Repository",
-      "Repository": "MRAN",
+      "Repository": "STAN",
       "Hash": "3f1f32cc549013b73cb5b2c3c2675559",
       "Requirements": [
         "RcppEigen",
@@ -2145,7 +2149,7 @@
       "Package": "rstan",
       "Version": "2.26.16",
       "Source": "Repository",
-      "Repository": "MRAN",
+      "Repository": "STAN",
       "Hash": "a3a1840761f77eeaba29616d6aeb7588",
       "Requirements": [
         "BH",
