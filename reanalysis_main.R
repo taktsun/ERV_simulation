@@ -45,7 +45,7 @@ desstat2 <- summarydesstat(dfERV2)
 desstat3 <- summarydesstat(dfERV3)
 
 # Calculate multilevel modeling results
-    # completeIndices = FALSE: include all available observations
+    # completeIndices = FALSE: include all available observations (results in manuscript)
     # completeIndices = TRUE : only include observations with no missing/NA variability indices
 resMLM1 <- MLMresults(dfERV1,1,completeIndices = FALSE)
 resMLM2 <- MLMresults(dfERV2,2,completeIndices = FALSE)
