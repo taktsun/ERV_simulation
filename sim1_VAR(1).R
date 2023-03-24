@@ -117,7 +117,7 @@ siminput[["adjSD"]] <- correctSD(siminput[["autoregressive"]],siminput[["n"]])*s
 
 # Predetermine seed values and store siminput -----------------------------
 siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
-saveRDS(siminput, file = "siminput.RData")
+saveRDS(siminput, file = "sim1_input.RData")
 
 
 # prepare parallel processing
