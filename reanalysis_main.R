@@ -43,6 +43,9 @@ dfERV3<-loadESMcalculateERV(3)
 desstat1 <- summarydesstat(dfERV1)
 desstat2 <- summarydesstat(dfERV2)
 desstat3 <- summarydesstat(dfERV3)
+desstat_all <- rbind((cbind(dataset = 1, desstat1)),
+                     (cbind(dataset = 2, desstat2)),
+                     (cbind(dataset = 3, desstat3)))
 
 # Calculate multilevel modeling results
     # completeIndices = FALSE: include all available observations (results in manuscript)
@@ -51,9 +54,8 @@ resMLM1 <- MLMresults(dfERV1,1,completeIndices = FALSE)
 resMLM2 <- MLMresults(dfERV2,2,completeIndices = FALSE)
 resMLM3 <- MLMresults(dfERV3,3,completeIndices = FALSE)
 resMLM_all<-rbind(resMLM1,resMLM2,resMLM3)
+
 # output .csv if needed:
-# write.csv(desstat1,"reanalysis_desstat1.csv")
-# write.csv(desstat2,"reanalysis_desstat2.csv")
-# write.csv(desstat3,"reanalysis_desstat3.csv")
+# write.csv(desstat_all,"desstat_summary.csv")
 # write.csv(resMLM_all,"reanalysis_MLMsummary.csv")
 
