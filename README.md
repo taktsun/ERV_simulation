@@ -35,6 +35,7 @@ packages_needed.R                 | States package dependency for renv | Require
 File                      | Description                | Usage         
 ------------------------- | -------------------------- | --------------
 ERV_simulation.Rproj      | Project file               | Loads project 
+sim1_input.RData      | Simulation 1 parameter input with seed               | Optional; load with ReadRDS in step 1 for replication
 README.md                 | Description of project     | Read only
 LICENSE                   | User permissions           | Read only     
 .worcs                    | WORCS metadata YAML        | Read only     
@@ -75,7 +76,7 @@ Reproduce the results by these 5 steps.
 
 	    renv::restore()
 
- 5. Run 3 R scripts to reproduce the results. Start new R session (Ctrl+Shift+F10) before you run each script.
+ 5. Run 3 R scripts to reproduce the results. Start new R session (Ctrl+Shift+F10 in Windows) before you run each script.
  
 	- sim1_VAR(1).R
 	- sim2_lorenz.R
@@ -86,7 +87,7 @@ Step 1 to 4 are detailed in the vignette on [reproducing a WORCS project](https:
 ## Troubleshooting with rstan and StanHeaders
 
 rstan and StanHeaders are two required packages to estimate multilevel modeling with brms.
-However, compatibility of the CRAN versions of the two packages on R version >= 4.2 is not good.
+However, there might be compatibility of the CRAN versions of the two packages on R version >= 4.2 (as of Mar 2023).
 If you encounter problems with running brms models (in reanalysis_main.R), run the below two lines to install the developer versions of rstan and StanHeaders:
 
 	remove.packages(c("StanHeaders", "rstan"))
