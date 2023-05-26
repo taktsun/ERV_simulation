@@ -3,7 +3,7 @@
 
 # Readme <a href='https://osf.io/zcvbs/'><img src='worcs_icon.png' align="right" height="139" /></a>
 
-This is the github of my manuscript "A Theory-Informed Emotion Regulation Variability Index: Bray-Curtis Dissimilarity". You can reproduce the analysis results in the manuscript following this readme. 
+This is the github of my manuscript ["A Theory-Informed Emotion Regulation Variability Index: Bray-Curtis Dissimilarity"](https://psyarxiv.com/twk9m/download?format=pdf). You can reproduce the analysis results in the manuscript following this readme. 
 
 ## Where do I start?
 
