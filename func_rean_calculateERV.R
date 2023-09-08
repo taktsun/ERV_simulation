@@ -253,6 +253,7 @@ df$grand_moment_meanNA <- mean(calc.mean(moment_meanNA, ppnr, data=df),na.rm=TRU
 df$grand_moment_betweenSD.single <- mean(calc.mean(moment_betweenSD.single, ppnr, data=df),na.rm=TRUE)
 df$grand_moment_betweenRSD.single <- mean(calc.mean(moment_betweenRSD.single, ppnr, data=df),na.rm=TRUE)
 df$grand_moment_withinRSD <- mean(calc.mean(person_withinRSD, ppnr, data=df),na.rm=TRUE)
+df$grand_moment_withinSD <- mean(calc.mean(person_withinSD, ppnr, data=df),na.rm=TRUE)
 
 df$grand_moment_betweenSD.amm <- mean(calc.mean(moment_betweenSD.amm, ppnr, data=df),na.rm=TRUE)
 df$grand_moment_betweenRSD.amm <- mean(calc.mean(moment_betweenRSD.amm, ppnr, data=df),na.rm=TRUE)
@@ -271,6 +272,7 @@ df$moment_meanNAcb <- df$person_meanNA - df$grand_moment_meanNA
 df$moment_betweenSD.singlecb <- df$person_betweenSD.single - df$grand_moment_betweenSD.single
 df$moment_betweenRSD.singlecb <- df$person_betweenRSD.single - df$grand_moment_betweenRSD.single
 df$moment_withinRSDcb <- df$person_withinRSD - df$grand_moment_withinRSD
+df$moment_withinSDcb <- df$person_withinSD - df$grand_moment_withinSD
 
 df$moment_betweenSD.ammcb <- df$person_betweenSD.amm - df$grand_moment_betweenSD.amm
 df$moment_betweenRSD.ammcb <- df$person_betweenRSD.amm - df$grand_moment_betweenRSD.amm
