@@ -36,8 +36,10 @@ library(parallel)
 
 # a list of names that correspond to the indices output specified in calcdis
   list_metrics <- c("withinRSD",
-                  "betweenRSD.single",
-                  "betweenRSD.mom.all",
+                    "betweenRSD.single",
+                    "sdSD",
+                    "betweenRSD.suc.second",
+                    "betweenRSD.mom.all",
                   "betweenRSD.suc.second",
                   "BrayCurtisFull.mom.all",
                   "BrayCurtisFull.suc.second",
@@ -63,7 +65,8 @@ library(parallel)
     # refer to metric_functions.R on the output
     out <- c(withinRSD = metric_person_within_SD(matx),
              betweenRSD.single = metric_person_between_SD(matx),
-           betweenRSD = metric_person_SD(matx),
+             sdSD = metric_person_sdSD(matx),
+             betweenRSD = metric_person_SD(matx),
            BrayCurtisFull = metric_person_beta(matx, "bray"),
            BrayCurtisRepl = metric_person_beta(matx, "bray",".bal"),
            BrayCurtisNest = metric_person_beta(matx, "bray",".gra"),
@@ -222,7 +225,18 @@ for (i in 1:length(list_metrics)){
   respcor<- rbind(respcor,tmpres)
 }
 respcor <- as.data.frame(respcor)
-rownames(respcor) <-  1:length(list_metrics)
+rescor <- NULL
+for (i in 1:length(list_metrics)){
+  tmpres<- cor(dfcombine[,c("prob","ERn","nobs",list_metrics[i])])[,4]
+  tmpres[4] <- list_metrics[i]
+  rescor<- rbind(rescor,tmpres)
+}
+rescor <- as.data.frame(rescor)
 
+rownames(respcor) <-  1:length(list_metrics)
+rownames(rescor) <-  1:length(list_metrics)
+respcor
+rescor
 # write results as .csv files
 write.csv(respcor,paste0("sim2_respcor_rep",siminput$rep[1]," ",Sys.Date(),".csv")) # partial correlation
+write.csv(rescor,paste0("sim2_rescor_rep",siminput$rep[1]," ",Sys.Date(),".csv")) # correlation
