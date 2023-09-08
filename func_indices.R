@@ -70,3 +70,39 @@ metric_person_beta <- function(x, index.family = "bray" , extract= ""){
   composite_mean(matx)
 }
 
+#==================================================================================
+# The below are added for the review & resubmit in Sep 2023
+#==================================================================================
+
+# Between-strategy-difference SD
+metric_person_sdSD <- function(x){
+  tryCatch({
+    if(!is.matrix(x)) stop()
+    mean(apply((x[-1, ] - x[-nrow(x),])^2,1,sd))
+  }, error = function(e){
+    mean(apply((x[-1, ] - x[-nrow(x),])^2,1,sd))
+  })
+}
+
+# wrappers to calculate Bray-Curtis dissimilarity in successive difference
+# return NA for comparisons with NA
+calc.bray.pair <- function(row1, row2) {
+  if(is.na(sum(row1, row2))){
+    c(beta.bray.bal = NA, beta.bray.gra = NA, beta.bray = NA)
+  }else{
+    (beta.pair.abund(rbind(row1,row2),"bray"))
+  }
+}
+calc.bray.suc <- function(x) {
+  suc.temp <- as.data.frame(do.call(rbind, lapply(1:(nrow(x) - 1), function(i) calc.bray.pair(x[i, ], x[i + 1, ]))))
+  suc.temp[] <- as.numeric(unlist(suc.temp))
+  suc.temp <- colMeans(suc.temp, na.rm = TRUE)
+  suc.temp
+}
+
+# wrappers to calculate Bray-Curtis dissimilarity in all-moment comparisons
+calc.bray.amm <- function(x) {
+  x <- x[complete.cases(x), ]
+  unlist(lapply(beta.pair.abund(x,"bray"),mean))
+}
+
