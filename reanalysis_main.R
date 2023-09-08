@@ -1,7 +1,6 @@
-# These packages aren't on CRAN. Install manually if brms throws error.
+# These the following package isn't on CRAN. Install manually if needed.
 # remotes::install_github("wviechtb/esmpack")
-# remove.packages(c("StanHeaders", "rstan"))
-# install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+
 library(betapart)
 library(vegan)
 library(crqa)
@@ -9,9 +8,7 @@ library(esmpack)
 library(performance)
 library(misty) # for calculating ICC in descriptive statistics
 library(nlme) # MLM estimation
-library(brms) # MLM bayesian method
-library(rstan) # required for brms
-options(mc.cores = parallel::detectCores()-1)
+library(boot) # for bootstrapping RMSEs
 
 # ===== load functions from other .R ================
 
@@ -28,6 +25,8 @@ source("func_rean_calculateERV.R")
 source("func_rean_desStat.R")
 # load function to calculate multilevel modeling
 source("func_rean_MLM.R")
+# load function to bootstrap RMSEs
+source("func_bootRMSE.R")
 
 
 # =======================
@@ -52,6 +51,9 @@ desstat_all <- rbind((cbind(dataset = 1, desstat1)),
     # completeIndices = TRUE : only include observations with no missing/NA variability indices
 resMLM1 <- MLMresults(dfERV1,1,completeIndices = FALSE)
 resMLM2 <- MLMresults(dfERV2,2,completeIndices = FALSE)
+    # modelmoment.betweenRSD threw a warning on singular precision matrix.
+    # Fixed effects estimated were almost the same as running lme not using 'optim' optimizer
+    # and did not affect the the conclusion of the paper.
 resMLM3 <- MLMresults(dfERV3,3,completeIndices = FALSE)
 resMLM_all<-rbind(resMLM1,resMLM2,resMLM3)
 
@@ -59,3 +61,7 @@ resMLM_all<-rbind(resMLM1,resMLM2,resMLM3)
 # write.csv(desstat_all,"desstat_summary.csv")
 # write.csv(resMLM_all,"reanalysis_MLMsummary.csv")
 
+bootrep <- 1000
+resbootRMSE <- bootRMSEresults(bootrep = bootrep, saveRdata = TRUE)
+# singular precision matrix in some of the bootstrap resamplings but was not critical
+# to obtaining RMSE estimate for that occasion of resampling.
