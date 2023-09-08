@@ -61,58 +61,54 @@ if(completeIndices){
 modelmoment.intercept <- lme(fixed=moment_meanNA ~1,
                         data=df,
                         random=~1 | ppnr, correlation = corAR1(),
-                        control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
+                        control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
 
 modelmoment.withinRSD <- lme(fixed=moment_meanNA ~ moment_withinRSDcb + timecw,
                            data=df,
                            random=~1 | ppnr, correlation = corAR1(),
-                           control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
+                           control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
 modelmoment.betweenRSD <- lme(fixed=moment_meanNA ~ moment_betweenRSD.singlecw+moment_betweenRSD.singlecb + timecw,
                          data=df,
                          random=~1+ moment_betweenRSD.singlecw | ppnr, correlation = corAR1(),
-                         control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
+                         control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
 modelmoment.betweenRSD.suc <- lme(fixed=moment_meanNA ~ moment_betweenRSD.succw +moment_betweenRSD.succb + timecw,
                              data=df,
                              random=~1+ moment_betweenRSD.succw | ppnr, correlation = corAR1(),
-                             control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
+                             control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
 modelmoment.bray.all.suc <- lme(fixed=moment_meanNA ~ moment_bray.all.succw+moment_bray.all.succb+ timecw,
                                      data=df,
                                      random=~1+ moment_bray.all.succw | ppnr, correlation = corAR1(),
-                                     control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
-if (datasource==2){ # Bray-Curtis subcomponent MLM does not converge with nlme so brms is used
-  modelmoment.bray.part.suc <- brm((moment_meanNA) ~    (moment_bray.bal.succw) + (moment_bray.gra.succw)+
-                                          moment_bray.bal.succb+ moment_bray.gra.succb+
-                                 (1+moment_bray.bal.succw + moment_bray.gra.succw|ppnr) + ar(),
-                               data=df, seed = 1999)
-}else{
-  # nlme cannot converge (singular convergence) for dataset2
-  modelmoment.bray.part.suc <- lme(fixed=moment_meanNA ~ moment_bray.bal.succw+ moment_bray.gra.succw+
+                                     control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+modelmoment.bray.part.suc <- lme(fixed=moment_meanNA ~ moment_bray.bal.succw+ moment_bray.gra.succw+
                                           moment_bray.bal.succb+ moment_bray.gra.succb+ timecw,
                                         data=df,
                                         random=~1+ moment_bray.bal.succw+ moment_bray.gra.succw | ppnr, correlation = corAR1(),
-                                        control =list(msMaxIter = 1000, msMaxEval = 1000),na.action = na.omit)
-}
+                                        control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+modelmoment.withinSD <- lme(fixed=moment_meanNA ~ moment_withinSDcb + timecw,
+                             data=df,
+                             random=~1 | ppnr, correlation = corAR1(),
+                             control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+modelmoment.betweenSD <- lme(fixed=moment_meanNA ~ moment_betweenSD.singlecw+moment_betweenSD.singlecb + timecw,
+                              data=df,
+                              random=~1+ moment_betweenSD.singlecw | ppnr, correlation = corAR1(),
+                              control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+modelmoment.betweenSD.suc <- lme(fixed=moment_meanNA ~ moment_betweenSD.succw +moment_betweenSD.succb + timecw,
+                                  data=df,
+                                  random=~1+ moment_betweenSD.succw | ppnr, correlation = corAR1(),
+                                  control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+
 
 resmodelmomentest <- rbind(
   preparemmresult(modelmoment.intercept),
+  preparemmresult(modelmoment.withinSD),
+  preparemmresult(modelmoment.betweenSD),
+  preparemmresult(modelmoment.betweenSD.suc),
   preparemmresult(modelmoment.withinRSD),
   preparemmresult(modelmoment.betweenRSD),
   preparemmresult(modelmoment.betweenRSD.suc),
-  preparemmresult(modelmoment.bray.all.suc)
+  preparemmresult(modelmoment.bray.all.suc),
+  preparemmresult(modelmoment.bray.part.suc)
 )
-if (datasource==2){
-  resbrm<- (preparemmresult.brm(modelmoment.bray.part.suc))
-  names(resbrm)[names(resbrm) == 'Estimate'] <- 'phi'
-  resmodelmomentest<- rbind(
-    resmodelmomentest,
-    resbrm)
-}else{
-  resmodelmomentest<- rbind(
-    resmodelmomentest,
-    # the below line will give an error for Dataset2: Bray-Curtis subcomponent MLM
-    # because it was estimated by brms
-    preparemmresult(modelmoment.bray.part.suc))
-}
 
 cbind( dataset = rep(datasource,nrow(resmodelmomentest)),resmodelmomentest)
 }
