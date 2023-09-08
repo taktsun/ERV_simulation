@@ -27,7 +27,7 @@ siminput <- expand.grid(
   ER_mean = c(3),
   # within-strategy SD
   ER_withinSD = c(0.10,0.19,0.28),
-  # Number of ER strategies]
+  # Number of ER strategies
   ERn = c(2,3,5,6),
   # max of scale: expects no relationship
   scalemax = c(100),
@@ -70,8 +70,9 @@ simulate_data <- function(n = 50, ERn = 2, autoregressive = 1, correlation = 0, 
 
 # Function to calculate partial correlation between indices and parameters
 
-print_result <- function(timemode="successive", lParam, lIndex){
-  nc <- length(lParam)+n_singleoutput_metric
+print_result <- function(timemode="successive", lParam, lpIndex, lmIndex){
+  nc <- length(lParam)+length(lpIndex)
+  lIndex <- c(lpIndex,lmIndex)
   # remove the simulation input parameter columns
   output <- (tab[,-c(1:nc)])
 
@@ -86,6 +87,7 @@ print_result <- function(timemode="successive", lParam, lIndex){
 
   res_pcor <- data.frame()
   res_pcpvalue <- data.frame()
+  res_cor <- data.frame()
   for (i in 1:length(lIndex)){
     dftemp <- cbind(output[,lIndex[i]],output[,1:length(lParam)])
     tryCatch({
@@ -96,12 +98,22 @@ print_result <- function(timemode="successive", lParam, lIndex){
       pcortemp <- NA
       pcorpvalue <- NA
     })
+    tryCatch({
+      cortemp <- round(cor(dftemp)[1,],4)
+    }, error = function(e){
+      # assign NA to cor results if throwing error
+      cortemp <- NA
+    })
     res_pcor <- rbind.data.frame(res_pcor,data.frame(as.list(pcortemp)))
     res_pcpvalue  <- rbind.data.frame(res_pcpvalue,data.frame(as.list(pcorpvalue)))
+    res_cor <- rbind.data.frame(res_cor,data.frame(as.list(cortemp)))
     res_pcor[i,1] <- lIndex[i]
     res_pcpvalue[i,1] <- lIndex[i]
+    res_cor[i,1] <- lIndex[i]
   }
-  list(partial_correlation=res_pcor,pcor.pvalue=res_pcpvalue)
+  list(partial_correlation=res_pcor,
+       pcor.pvalue=res_pcpvalue,
+       correlation = res_cor)
 }
 
 
@@ -147,6 +159,7 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
     n,
     metric_person_within_SD(df),
     metric_person_between_SD(df),
+    metric_person_sdSD(df),
     metric_person_SD(df),
     metric_person_beta(df, "bray"),        # Bray-Curtis dissimilarity: Full index
     metric_person_beta(df, "bray",".bal"), # Bray-Curtis dissimilarity: Replacement subscomponent
@@ -160,7 +173,7 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
 
   if (printtxtresult){
   # Option 1: print text files
-  write.table(x = t(out), file = sprintf("results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
+  write.table(x = t(out), file = sprintf("sim1results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
   NULL
   }else{
   # Option 2: print to R environment variable
@@ -183,7 +196,7 @@ print("End of simulation")
 
 # if results are stored at .txt, read and combine the .txt output
 if (is.null(tab)){
-  txt_files_ls = list.files(pattern="result*")
+  txt_files_ls = list.files(pattern="sim1results_*")
   txt_files_df <- lapply(txt_files_ls, function(x) {read.table(file = x, header = F, sep ="\t")})
   tab <-do.call("rbind", lapply(txt_files_df, as.matrix))
 }
@@ -196,28 +209,29 @@ list_parameters <- c("Autoregression",
                      "nobs")
 # the below list has to match what specified in sim1_VAR(1).R
 # list person-level & non-temporal indices first, then moment-level indices
-list_metrics <- c("withinSD",
-                  "betweenSD",
-                  # person-level/non-temporal indices go above
-                  "SD",
-                  "bray",          #Bray-Curtis dissimilarity full index
-                  "bray.bal",      #Bray-Curtis dissimilarity replacement subcomponent
-                  "bray.gra",      #Bray-Curtis dissimilarity nestedness subcomponent
-                  "jaccard",       #Jaccard dissimilarity: Full index
-                  "jaccard.bal",   #Jaccard dissimilarity: replacement subcomponent
-                  "jaccard.gra",   #Jaccard dissimilarity: nestedness subcomponent
-                  "chord",
-                  "chisq"
-)
-# number of person-level or non-temporal indices
-# (in this case, within-strategy SD and between-strategy SD, so = 2)
-n_singleoutput_metric <- 2
+
+# person-level/non-temporal indices go below
+list_personindices <- c("withinSD",
+                        "betweenSD",
+                        "SD.sucdiff" # SD of successive differences in each ER strategy
+                        )
+list_momentindices <- c("SD",
+                        "bray",          #Bray-Curtis dissimilarity full index
+                        "bray.bal",      #Bray-Curtis dissimilarity replacement subcomponent
+                        "bray.gra",      #Bray-Curtis dissimilarity nestedness subcomponent
+                        "jaccard",       #Jaccard dissimilarity: Full index
+                        "jaccard.bal",   #Jaccard dissimilarity: replacement subcomponent
+                        "jaccard.gra",   #Jaccard dissimilarity: nestedness subcomponent
+                        "chord",
+                        "chisq")
+list_metrics <- c(list_personindices,
+                  list_momentindices)
 
 
 
 # results: successive difference and all-moment comparison approaches
-res.suc <- print_result("successive", list_parameters, list_metrics)
-res.amm <- print_result("allmoment", list_parameters, list_metrics)
+res.suc <- print_result("successive", list_parameters, list_personindices,list_momentindices)
+res.amm <- print_result("allmoment", list_parameters, list_personindices,list_momentindices)
 
 # print results - successive difference
 res.suc
