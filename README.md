@@ -1,6 +1,7 @@
 
 
 
+
 # Readme <a href='https://osf.io/zcvbs/'><img src='worcs_icon.png' align="right" height="139" /></a>
 
 This is the github of my manuscript ["A Theory-Informed Emotion Regulation Variability Index: Bray-Curtis Dissimilarity"](https://psyarxiv.com/twk9m/download?format=pdf). You can reproduce the analysis results in the manuscript following this readme. 
@@ -18,10 +19,13 @@ Tables of R scripts, other files, and folders.
 
 File                      | Description                | Usage         
 ------------------------- | -------------------------- | --------------
-prepare_data.R            | Reanalysis: load raw data from OSF | Optional; run between step 2 and 3
-sim1_VAR(1).R                 | Simulation 1: data generation with VAR(1) | Run to reproduce results (step 1)
-sim2_lorenz.R                 | Simulation 2: data generation with Lorenz system | Run to reproduce results (step 2)
-reanalysis_main.R                 | Reanalysis: descriptive statistics and main analyses | Run to reproduce results (step 3)
+prepare_data.R            | Reanalysis: load raw data from OSF | Optional because data are already in .csv
+sim1_VAR(1).R                 | Simulation 1: data generation with VAR(1) | Run to reproduce results
+sim2_lorenz.R                 | Simulation 2: data generation with Lorenz system | Run to reproduce results
+reanalysis_main.R                 | Reanalysis: descriptive statistics and main analyses | Run to reproduce results 
+RMSE_bootstrap.R                 | Produce bootstrapped RMSEs following reanalysis | Run to reproduce results
+sim1_VAR(1)_measurement.R                | Extra analyses for supplemental materials| Run to reproduce results
+sim2_lorenz_analysis_measurement.R                | Extra analyses for supplemental materials| Run to reproduce results
 func_indices.R                 | Dissimilarity indices for simulations & reanalyses | Required; read only
 func_rean_desStat.R                 | Reanalysis 1: descriptive statistics | Required; read only
 func_rean_calculateERV.R                 | Reanalysis 2: calculate dissimilarity indices | Required; read only
@@ -76,22 +80,13 @@ Reproduce the results by these 5 steps.
 
 	    renv::restore()
 
- 5. Run 3 R scripts to reproduce the results. Start new R session (Ctrl+Shift+F10 in Windows) before you run each script.
+ 5. Run 3 R scripts to reproduce the results. Start new R session (Ctrl+Shift+F10 in Windows) before you run each simulation or reanalysis.
  
 	- sim1_VAR(1).R
 	- sim2_lorenz.R
-	- reanalysis_main.R
+	- reanalysis_main.R, then RMSE_bootstrap.R
 
 Step 1 to 4 are detailed in the vignette on [reproducing a WORCS project](https://cjvanlissa.github.io/worcs/articles/reproduce.html).
-
-## Troubleshooting with rstan and StanHeaders
-
-rstan and StanHeaders are two required packages to estimate multilevel modeling with brms.
-However, there might be compatibility of the CRAN versions of the two packages on R version >= 4.2 (as of Mar 2023).
-If you encounter problems with running brms models (in reanalysis_main.R), run the below two lines to install the developer versions of rstan and StanHeaders:
-
-	remove.packages(c("StanHeaders", "rstan"))
-	install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
 <!-- If your project deviates from the steps outlined in the vignette on     -->
 <!-- reproducing a WORCS project, please provide your own advice for         -->
@@ -99,12 +94,9 @@ If you encounter problems with running brms models (in reanalysis_main.R), run t
 
 ### Adherence to WORCS
 
-This project uses the Workflow for Open Reproducible Code in Science (WORCS) to
-ensure transparency and reproducibility. The workflow is designed to meet the
-principles of Open Science throughout a research project. We used WORCS for the simulation studies and data analysis, but we did not use WORCS for manuscript preparation.
+This project uses the Workflow for Open Reproducible Code in Science (WORCS) to ensure transparency and reproducibility. The workflow is designed to meet the principles of Open Science throughout a research project. We used WORCS for the simulation studies and data analysis, but we did not use WORCS for manuscript preparation.
 
 ### More about WORCS
 
-To learn how WORCS helps researchers meet the TOP-guidelines and FAIR principles,
-read the preprint at https://osf.io/zcvbs/
+To learn how WORCS helps researchers meet the TOP-guidelines and FAIR principles, read the preprint at https://osf.io/zcvbs/
 
