@@ -16,7 +16,7 @@ set.seed(1999)
 printtxtresult <- FALSE
 
 # study design
-simrep<- 1000
+simrep<- 100
 
 siminput <- expand.grid(
   # reps
@@ -72,7 +72,8 @@ siminput_rounding <- rbind((replace(siminput, "rounding", 0)),
                            (replace(siminput, "rounding", 1)),
                            (replace(siminput, "rounding", 2)),
                            (replace(siminput, "rounding", 3)),
-                           (replace(siminput, "rounding", 4))
+                           (replace(siminput, "rounding", 4)),
+                           (replace(siminput, "rounding", 5))
 )
 
 
@@ -223,21 +224,31 @@ print("End of simulation")
 #======================
 # Simulation: Evaluate indices' performance
 #======================
-
-# if results are stored at .txt, read and combine the .txt output
-if (is.null(tab)){
-  txt_files_ls = list.files(pattern="simresults_*")
-  txt_files_df <- lapply(txt_files_ls, function(x) {read.table(file = x, header = F, sep ="\t")})
-  tab <-do.call("rbind", lapply(txt_files_df, as.matrix))
-}
-
 # the below list is in the same order as what was inserted each row during loop
 list_parameters <- c("Autoregression",
                      "withinStgy_SD",
                      "Correlation",
                      "NER",
                      "nobs"
-                     )
+)
+list_nulltabparam <- c("missingness",
+                       "rounding",
+                       "sucf",
+                       "sucr",
+                       "sucn",
+                       "ammf",
+                       "ammr",
+                       "ammn"
+)
+
+# if results are stored at .txt, read and combine the .txt output
+if (is.null(tab)){
+  txt_files_ls = list.files(pattern="simresults_*")
+  txt_files_df <- lapply(txt_files_ls, function(x) {read.table(file = x, header = F, sep ="\t")})
+  tab <-do.call("rbind", lapply(txt_files_df, as.matrix))
+  colnames(tab)<-c(list_parameters,list_nulltabparam)
+}
+
 
 res.missingness.00 <- print_result_measurement(list_parameters,
                                                tab[(tab[,"rounding"] == Inf &
@@ -287,6 +298,10 @@ res.rounding.4 <- print_result_measurement(list_parameters,
                                            tab[(tab[,"rounding"] == 4 &
                                                   tab[,"missingness"] == 0)
                                                ,])
+res.rounding.5 <- print_result_measurement(list_parameters,
+                                           tab[(tab[,"rounding"] == 5 &
+                                                  tab[,"missingness"] == 0)
+                                               ,])
 res.missingness.00
 res.missingness.01
 res.missingness.02
@@ -294,6 +309,7 @@ res.missingness.03
 res.missingness.04
 res.missingness.05
 res.rounding.Inf
+res.rounding.5
 res.rounding.4
 res.rounding.3
 res.rounding.2
@@ -307,6 +323,7 @@ write.csv(res.missingness.03,paste0("sim1_measurement_m3rI_",simrep," ",Sys.Date
 write.csv(res.missingness.04,paste0("sim1_measurement_m4rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.missingness.05,paste0("sim1_measurement_m5rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.Inf,paste0("sim1_measurement_m0rI_",simrep," ",Sys.Date(),".csv"))
+write.csv(res.rounding.5,paste0("sim1_measurement_m0r5_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.4,paste0("sim1_measurement_m0r4_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.3,paste0("sim1_measurement_m0r3_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.2,paste0("sim1_measurement_m0r2_",simrep," ",Sys.Date(),".csv"))
