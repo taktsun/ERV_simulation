@@ -15,10 +15,11 @@ set.seed(1999)
 # print to text file (TRUE), or store at R environment variable (FALSE)
 printtxtresult <- TRUE
 
+simrep <- 1000
 # study design
 siminput <- expand.grid(
   # reps
-  rep = 1:1000,
+  rep = 1:simrep,
   # N
   n = c(30,70,100),
   # autocorrelation
@@ -237,3 +238,5 @@ res.amm <- print_result("allmoment", list_parameters, list_personindices,list_mo
 res.suc
 # print results - all-moment comparison
 res.amm
+write.csv(res.suc,paste0("sim1main_suc",simrep,"_", Sys.Date(),".csv"))
+write.csv(res.amm,paste0("sim1main_amm",simrep,"_", Sys.Date(),".csv"))
