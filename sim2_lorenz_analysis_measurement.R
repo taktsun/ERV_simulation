@@ -23,7 +23,7 @@ library(parallel)
 # simulation paramaters
   siminput <- expand.grid(
     # reps
-    rep = 1000,
+    rep = 100,
     # nobs of time series
     n = c(30,70,100),
     # Number of ER strategies
@@ -43,12 +43,13 @@ library(parallel)
 
 
 # a list of names that correspond to the indices output specified in calcdis
-  list_metrics <- paste0(c(rep("orig_",6),
+  list_metrics <- paste0(c(rep("orig",6),
                            rep("m1",6),
                            rep("m2",6),
                            rep("m3",6),
                            rep("m4",6),
                            rep("m5",6),
+                           rep("r5",6),
                            rep("r4",6),
                            rep("r3",6),
                            rep("r2",6),
@@ -89,6 +90,7 @@ MCARbyrow <- function(matx, prob){
              calcdis_inside(MCARbyrow(matx,0.3),"m3rI"),
              calcdis_inside(MCARbyrow(matx,0.4),"m4rI"),
              calcdis_inside(MCARbyrow(matx,0.5),"m5rI"),
+             calcdis_inside(round(matx,5),"m0r5"),
              calcdis_inside(round(matx,4),"m0r4"),
              calcdis_inside(round(matx,3),"m0r3"),
              calcdis_inside(round(matx,2),"m0r2"),
