@@ -46,6 +46,25 @@ boot.rmseDBCsub <- function(data, indices) {
   return(performance_rmse(fit, normalized = FALSE))
 }
 
+boot.rmseDBC.amm <- function(data, indices) {
+  val <- data[indices,] # selecting sample with boot
+  fit <- lme(fixed=moment_meanNA ~ moment_bray.all.ammcw+moment_bray.all.ammcb+ timecw,
+             data=val,
+             random=~1+ moment_bray.all.ammcw | ppnr, correlation = corAR1(),
+             control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+  return(performance_rmse(fit, normalized = FALSE))
+}
+
+boot.rmseDBCsub.amm <- function(data, indices) {
+  val <- data[indices,] # selecting sample with boot
+  fit <- lme(moment_meanNA ~ moment_bray.bal.ammcw+ moment_bray.gra.ammcw+
+               moment_bray.bal.ammcb+ moment_bray.gra.ammcb+ timecw,
+             data=val,
+             random=~1+ moment_bray.bal.ammcw+ moment_bray.gra.ammcw | ppnr, correlation = corAR1(),
+             control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+  return(performance_rmse(fit, normalized = FALSE))
+}
+
 
 # Performing 1000 replications with boot
 bootRMSEresults <- function (bootrep = 5, saveRdata = FALSE){
@@ -79,6 +98,18 @@ outputrmseDBCsub.2 <- boot(data=dfERV2[dfERV2$b_completeER,], statistic=boot.rms
                         R=bootrep, parallel = "snow")
 outputrmseDBCsub.3 <- boot(data=dfERV3[dfERV3$b_completeER,], statistic=boot.rmseDBCsub,
                         R=bootrep, parallel = "snow")
+outputrmseDBC.amm.1 <- boot(data=dfERV1[dfERV1$b_completeER,], statistic=boot.rmseDBC.amm,
+                        R=bootrep, parallel = "snow")
+outputrmseDBC.amm.2 <- boot(data=dfERV2[dfERV2$b_completeER,], statistic=boot.rmseDBC.amm,
+                        R=bootrep, parallel = "snow")
+outputrmseDBC.amm.3 <- boot(data=dfERV3[dfERV3$b_completeER,], statistic=boot.rmseDBC.amm,
+                        R=bootrep, parallel = "snow")
+outputrmseDBCsub.amm.1 <- boot(data=dfERV1[dfERV1$b_completeER,], statistic=boot.rmseDBCsub.amm,
+                           R=bootrep, parallel = "snow")
+outputrmseDBCsub.amm.2 <- boot(data=dfERV2[dfERV2$b_completeER,], statistic=boot.rmseDBCsub.amm,
+                           R=bootrep, parallel = "snow")
+outputrmseDBCsub.amm.3 <- boot(data=dfERV3[dfERV3$b_completeER,], statistic=boot.rmseDBCsub.amm,
+                           R=bootrep, parallel = "snow")
 # table of mean RMSEs
 
 resbootRMSE <- matrix(c(mean(outputrmseWithinRSD.1$t),
@@ -113,6 +144,12 @@ saveRDS(outputrmseDBC.3, paste0("boot",bootrep,"_dBC3.RData"))
 saveRDS(outputrmseDBCsub.1, paste0("boot",bootrep,"_dBCsub1.RData"))
 saveRDS(outputrmseDBCsub.2, paste0("boot",bootrep,"_dBCsub2.RData"))
 saveRDS(outputrmseDBCsub.3, paste0("boot",bootrep,"_dBCsub3.RData"))
+saveRDS(outputrmseDBC.amm.1, paste0("boot",bootrep,"_dBC-amm1.RData"))
+saveRDS(outputrmseDBC.amm.2, paste0("boot",bootrep,"_dBC-amm2.RData"))
+saveRDS(outputrmseDBC.amm.3, paste0("boot",bootrep,"_dBC-amm3.RData"))
+saveRDS(outputrmseDBCsub.amm.1, paste0("boot",bootrep,"_dBCsub-amm1.RData"))
+saveRDS(outputrmseDBCsub.amm.2, paste0("boot",bootrep,"_dBCsub-amm2.RData"))
+saveRDS(outputrmseDBCsub.amm.3, paste0("boot",bootrep,"_dBCsub-amm3.RData"))
 }
 
 colnames(resbootRMSE) <- c(paste0("dataset",1:3))
