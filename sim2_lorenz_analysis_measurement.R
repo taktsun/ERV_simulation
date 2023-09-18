@@ -23,7 +23,7 @@ library(parallel)
 # simulation paramaters
   siminput <- expand.grid(
     # reps
-    rep = 100,
+    rep = 1000,
     # nobs of time series
     n = c(30,70,100),
     # Number of ER strategies
@@ -53,8 +53,7 @@ library(parallel)
                            rep("r4",6),
                            rep("r3",6),
                            rep("r2",6),
-                           rep("r1",6),
-                           rep("r0",6)
+                           rep("r1",6)
   ),
   c(rep(c("_repl.suc",
           "_nest.suc",
@@ -94,37 +93,8 @@ MCARbyrow <- function(matx, prob){
              calcdis_inside(round(matx,4),"m0r4"),
              calcdis_inside(round(matx,3),"m0r3"),
              calcdis_inside(round(matx,2),"m0r2"),
-             calcdis_inside(round(matx,1),"m0r1"),
-             calcdis_inside(round(matx,0),"m0r0")
+             calcdis_inside(round(matx,1),"m0r1")
     )
-
-
-
-
-    # # missingness 0.1
-    # tempbray.suc <- calc.bray.suc(matx)
-    # tempbray.amm <- calc.bray.amm(matx)
-    # out <- c(out,
-    #          sucm1rI = tempbray.suc[1],        # Bray-Curtis dissimilarity: replacement
-    #          sucm1rI = tempbray.suc[2],        # Bray-Curtis dissimilarity: nestedness
-    #          sucm1rI = tempbray.suc[3],        # Bray-Curtis dissimilarity: Full index
-    #          ammm1rI = tempbray.amm[1],        # Bray-Curtis dissimilarity: replacement
-    #          ammm1rI = tempbray.amm[2],        # Bray-Curtis dissimilarity: nestedness
-    #          ammm1rI = tempbray.amm[3]        # Bray-Curtis dissimilarity: Full index
-    # )
-    # # missingness 0.2
-    # tempmatx <- delete_MCAR(matx, 0., 1)
-    # tempmatx[!!rowSums(is.na(tempmatx)),] <- NA
-    # tempbray.suc <- calc.bray.suc(matx)
-    # tempbray.amm <- calc.bray.amm(matx)
-    # out <- c(out,
-    #          sucm1rI = tempbray.suc[1],        # Bray-Curtis dissimilarity: replacement
-    #          sucm1rI = tempbray.suc[2],        # Bray-Curtis dissimilarity: nestedness
-    #          sucm1rI = tempbray.suc[3],        # Bray-Curtis dissimilarity: Full index
-    #          ammm1rI = tempbray.amm[1],        # Bray-Curtis dissimilarity: replacement
-    #          ammm1rI = tempbray.amm[2],        # Bray-Curtis dissimilarity: nestedness
-    #          ammm1rI = tempbray.amm[3]        # Bray-Curtis dissimilarity: Full index
-    # )
 
 
   # this "returnparam" is a debugging option.
