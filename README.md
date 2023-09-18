@@ -23,13 +23,13 @@ prepare_data.R            | Reanalysis: load raw data from OSF | Optional becaus
 sim1_VAR(1).R                 | Simulation 1: data generation with VAR(1) | Run to reproduce results
 sim2_lorenz.R                 | Simulation 2: data generation with Lorenz system | Run to reproduce results
 reanalysis_main.R                 | Reanalysis: descriptive statistics and main analyses | Run to reproduce results 
-RMSE_bootstrap.R                 | Produce bootstrapped RMSEs following reanalysis | Run to reproduce results
 sim1_VAR(1)_measurement.R                | Extra analyses for supplemental materials| Run to reproduce results
 sim2_lorenz_analysis_measurement.R                | Extra analyses for supplemental materials| Run to reproduce results
 func_indices.R                 | Dissimilarity indices for simulations & reanalyses | Required; read only
 func_rean_desStat.R                 | Reanalysis 1: descriptive statistics | Required; read only
 func_rean_calculateERV.R                 | Reanalysis 2: calculate dissimilarity indices | Required; read only
 func_rean_MLM.R                 | Reanalysis 3: multilevel models | Required; read only
+func_bootRMSE.R                 | Reanalysis 3: bootstrapped RMSEs | Required; read only
 packages_needed.R                 | States package dependency for renv | Required; read only
 
 
@@ -39,7 +39,8 @@ packages_needed.R                 | States package dependency for renv | Require
 File                      | Description                | Usage         
 ------------------------- | -------------------------- | --------------
 ERV_simulation.Rproj      | Project file               | Loads project 
-sim1_input.RData      | Simulation 1 parameter input with seed               | Optional; load with ReadRDS in step 1 for replication
+sim1_input.RData      | Simulation 1 parameter input with seed               | Optional; load with ReadRDS for replication
+sim1_input_measurement.RData      | Extra analyses (different measurement conditions) of Simulation 1 parameter input with seed               | Optional; load with ReadRDS for replication
 README.md                 | Description of project     | Read only
 LICENSE                   | User permissions           | Read only     
 .worcs                    | WORCS metadata YAML        | Read only     
@@ -85,6 +86,9 @@ Reproduce the results by these 5 steps.
 	- sim1_VAR(1).R
 	- sim2_lorenz.R
 	- reanalysis_main.R, then RMSE_bootstrap.R
+  	- sim1_VAR(1)_measurement.R
+	- sim2_lorenz_analysis_measurement.R
+
 
 Step 1 to 4 are detailed in the vignette on [reproducing a WORCS project](https://cjvanlissa.github.io/worcs/articles/reproduce.html).
 
