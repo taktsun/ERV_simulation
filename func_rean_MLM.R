@@ -58,6 +58,7 @@ if(completeIndices){
 }
 
 # Multilevel modeling (MLM) goes below
+# .suc denotes the successive difference approach. .amm denotes all-moment comparison
 modelmoment.intercept <- lme(fixed=moment_meanNA ~1,
                         data=df,
                         random=~1 | ppnr, correlation = corAR1(),
@@ -76,14 +77,23 @@ modelmoment.betweenRSD.suc <- lme(fixed=moment_meanNA ~ moment_betweenRSD.succw 
                              random=~1+ moment_betweenRSD.succw | ppnr, correlation = corAR1(),
                              control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
 modelmoment.bray.all.suc <- lme(fixed=moment_meanNA ~ moment_bray.all.succw+moment_bray.all.succb+ timecw,
-                                     data=df,
-                                     random=~1+ moment_bray.all.succw | ppnr, correlation = corAR1(),
-                                     control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+                                data=df,
+                                random=~1+ moment_bray.all.succw | ppnr, correlation = corAR1(),
+                                control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
 modelmoment.bray.part.suc <- lme(fixed=moment_meanNA ~ moment_bray.bal.succw+ moment_bray.gra.succw+
-                                          moment_bray.bal.succb+ moment_bray.gra.succb+ timecw,
-                                        data=df,
-                                        random=~1+ moment_bray.bal.succw+ moment_bray.gra.succw | ppnr, correlation = corAR1(),
-                                        control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+                                   moment_bray.bal.succb+ moment_bray.gra.succb+ timecw,
+                                 data=df,
+                                 random=~1+ moment_bray.bal.succw+ moment_bray.gra.succw | ppnr, correlation = corAR1(),
+                                 control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+modelmoment.bray.all.amm <- lme(fixed=moment_meanNA ~ moment_bray.all.ammcw+moment_bray.all.ammcb+ timecw,
+                                data=df,
+                                random=~1+ moment_bray.all.ammcw | ppnr, correlation = corAR1(),
+                                control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
+modelmoment.bray.part.amm <- lme(fixed=moment_meanNA ~ moment_bray.bal.ammcw+ moment_bray.gra.ammcw+
+                                   moment_bray.bal.ammcb+ moment_bray.gra.ammcb+ timecw,
+                                 data=df,
+                                 random=~1+ moment_bray.bal.ammcw+ moment_bray.gra.ammcw | ppnr, correlation = corAR1(),
+                                 control =lmeControl(msMaxIter = 1000, msMaxEval = 1000,opt='optim'),na.action = na.omit)
 modelmoment.withinSD <- lme(fixed=moment_meanNA ~ moment_withinSDcb + timecw,
                              data=df,
                              random=~1 | ppnr, correlation = corAR1(),
@@ -107,7 +117,9 @@ resmodelmomentest <- rbind(
   preparemmresult(modelmoment.betweenRSD),
   preparemmresult(modelmoment.betweenRSD.suc),
   preparemmresult(modelmoment.bray.all.suc),
-  preparemmresult(modelmoment.bray.part.suc)
+  preparemmresult(modelmoment.bray.part.suc),
+  preparemmresult(modelmoment.bray.all.amm),
+  preparemmresult(modelmoment.bray.part.amm)
 )
 
 cbind( dataset = rep(datasource,nrow(resmodelmomentest)),resmodelmomentest)
