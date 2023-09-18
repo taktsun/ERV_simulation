@@ -69,7 +69,7 @@ siminput.odd$missingness <- sample (rep(c(0.1,0.2,0.3,0.4,0.5),32400),162000, re
 siminput.even$rounding <- sample(rep(c(1,2,3,4,5),32400),162000, replace = FALSE)
 siminput <- rbind(siminput.odd,siminput.even)
 
-saveRDS(siminput, file = "sim1_input_reviseresubmit.RData")
+saveRDS(siminput, file = "sim1_input_measurement.RData")
 
 
 # VAR(1) data generation function
