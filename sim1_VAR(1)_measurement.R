@@ -16,7 +16,7 @@ set.seed(1999)
 printtxtresult <- FALSE
 
 # study design
-simrep<- 100
+simrep<- 1000
 
 siminput <- expand.grid(
   # reps
@@ -62,22 +62,13 @@ siminput[["adjSD"]] <- correctSD(siminput[["autoregressive"]],siminput[["n"]])*s
 
 siminput$seed <- sample(1:.Machine$integer.max, nrow(siminput))
 
-siminput_missingness <- rbind((replace(siminput, "missingness", 0.1)),
-                              (replace(siminput, "missingness", 0.2)),
-                              (replace(siminput, "missingness", 0.3)),
-                              (replace(siminput, "missingness", 0.4)),
-                              (replace(siminput, "missingness", 0.5))
-)
-siminput_rounding <- rbind((replace(siminput, "rounding", 0)),
-                           (replace(siminput, "rounding", 1)),
-                           (replace(siminput, "rounding", 2)),
-                           (replace(siminput, "rounding", 3)),
-                           (replace(siminput, "rounding", 4)),
-                           (replace(siminput, "rounding", 5))
-)
+siminput$oddeven <- rep(c(1,0),162000)
+siminput.odd <- siminput[siminput$oddeven == 1,] # for missingness
+siminput.even <- siminput[siminput$oddeven == 0,] # for rounding
+siminput.odd$missingness <- sample (rep(c(0.1,0.2,0.3,0.4,0.5),32400),162000, replace = FALSE)
+siminput.even$rounding <- sample(rep(c(1,2,3,4,5),32400),162000, replace = FALSE)
+siminput <- rbind(siminput.odd,siminput.even)
 
-
-siminput <- rbind(siminput, siminput_missingness, siminput_rounding)
 saveRDS(siminput, file = "sim1_input_reviseresubmit.RData")
 
 
@@ -113,14 +104,14 @@ print_result_measurement <- function(lParam, tabinput){
   res_cor <- data.frame()
   for (i in 1:length(lIndex)){
     dftemp <- cbind(output[,lIndex[i]],output[,1:length(lParam)])
-    # tryCatch({
+    tryCatch({
     pcortemp <- round(pcor(dftemp)$estimate[1,],4)
     pcorpvalue <- round(pcor(dftemp)$p.value[1,],4)
-    # }, error = function(e){
-    #   # assign NA to pcor results as pcor throws error upon NA input
-    #   pcortemp <- NA
-    #   pcorpvalue <- NA
-    # })
+    }, error = function(e){
+      # assign NA to pcor results as pcor throws error upon NA input
+      pcortemp <- NA
+      pcorpvalue <- NA
+    })
     tryCatch({
       cortemp <- round(cor(dftemp)[1,],4)
     }, error = function(e){
@@ -164,13 +155,9 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
                       correlation = correlation,
                       ER_withinSD = ER_withinSD,
                       ER_mean = ER_mean)
-  # scalefactor <- scalemax/6
-  # df <- df * scalefactor
   df <- delete_MCAR(df, missingness, 1)
   df[!!rowSums(is.na(df)),] <- NA
   df <- round(df, digits = rounding)
-  # df[df<0] <- 0
-  # df[df>scalemax] <- scalemax
   tempbray.suc <- calc.bray.suc(df)
   tempbray.amm <- calc.bray.amm(df)
   out <- c(
@@ -187,24 +174,11 @@ tab <- foreach(rownum = 1:nrow(siminput), .packages = c("tsDyn", "betapart", "ve
     ammf = tempbray.amm[3],        # Bray-Curtis dissimilarity: Full index
     ammr = tempbray.amm[1],        # Bray-Curtis dissimilarity: replacement
     ammn = tempbray.amm[2]        # Bray-Curtis dissimilarity: nestedness
-    # metric_person_within_SD(df),
-    # metric_person_between_SD(df),
-    # metric_person_mssd(df),
-    # metric_person_sdSD(df),
-    # metric_person_SD(df),
-    # metric_person_beta(df, "bray"),        # Bray-Curtis dissimilarity: Full index
-    # metric_person_beta(df, "bray",".bal"), # Bray-Curtis dissimilarity: Replacement subscomponent
-    # metric_person_beta(df, "bray",".gra"), # Bray-Curtis dissimilarity: Nestedness subcomponent
-    # metric_person_beta(df, "ruz"),         # Jaccard dissimilarity: Full index
-    # metric_person_beta(df, "ruz",".bal"),  # Jaccard dissimilarity: Replacement subscomponent
-    # metric_person_beta(df, "ruz",".gra"),  # Jaccard dissimilarity: Nestedness subcomponent
-    # metric_person_vegan(df, "chord"),
-    # metric_person_vegan(df, "chisq")
   )
 
   if (printtxtresult){
   # Option 1: print text files
-  write.table(x = t(out), file = sprintf("simresults_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
+  write.table(x = t(out), file = sprintf("sim1measurement_results_%d.txt" , Sys.getpid()), sep = "\t", append = TRUE, row.names = FALSE, col.names = FALSE)
   NULL
   }else{
   # Option 2: print to R environment variable
@@ -243,17 +217,13 @@ list_nulltabparam <- c("missingness",
 
 # if results are stored at .txt, read and combine the .txt output
 if (is.null(tab)){
-  txt_files_ls = list.files(pattern="simresults_*")
+  txt_files_ls = list.files(pattern="sim1measurement_results_*")
   txt_files_df <- lapply(txt_files_ls, function(x) {read.table(file = x, header = F, sep ="\t")})
   tab <-do.call("rbind", lapply(txt_files_df, as.matrix))
   colnames(tab)<-c(list_parameters,list_nulltabparam)
 }
 
 
-res.missingness.00 <- print_result_measurement(list_parameters,
-                                               tab[(tab[,"rounding"] == Inf &
-                                                      tab[,"missingness"] == 0)
-                                                   ,])
 res.missingness.01 <- print_result_measurement(list_parameters,
                                                tab[(tab[,"rounding"] == Inf &
                                                       tab[,"missingness"] == 0.1)
@@ -274,14 +244,6 @@ res.missingness.05 <- print_result_measurement(list_parameters,
                                                tab[(tab[,"rounding"] == Inf &
                                                       tab[,"missingness"] == 0.5)
                                                    ,])
-res.rounding.Inf <- print_result_measurement(list_parameters,
-                                              tab[(tab[,"rounding"] == Inf &
-                                                     tab[,"missingness"] == 0)
-                                                  ,])
-res.rounding.0 <- print_result_measurement(list_parameters,
-                                              tab[(tab[,"rounding"] == 0 &
-                                                     tab[,"missingness"] == 0)
-                                                  ,])
 res.rounding.1 <- print_result_measurement(list_parameters,
                                            tab[(tab[,"rounding"] == 1 &
                                                   tab[,"missingness"] == 0)
@@ -302,30 +264,24 @@ res.rounding.5 <- print_result_measurement(list_parameters,
                                            tab[(tab[,"rounding"] == 5 &
                                                   tab[,"missingness"] == 0)
                                                ,])
-res.missingness.00
 res.missingness.01
 res.missingness.02
 res.missingness.03
 res.missingness.04
 res.missingness.05
-res.rounding.Inf
 res.rounding.5
 res.rounding.4
 res.rounding.3
 res.rounding.2
 res.rounding.1
-res.rounding.0
 
-write.csv(res.missingness.00,paste0("sim1_measurement_m0rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.missingness.01,paste0("sim1_measurement_m1rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.missingness.02,paste0("sim1_measurement_m2rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.missingness.03,paste0("sim1_measurement_m3rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.missingness.04,paste0("sim1_measurement_m4rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.missingness.05,paste0("sim1_measurement_m5rI_",simrep," ",Sys.Date(),".csv"))
-write.csv(res.rounding.Inf,paste0("sim1_measurement_m0rI_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.5,paste0("sim1_measurement_m0r5_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.4,paste0("sim1_measurement_m0r4_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.3,paste0("sim1_measurement_m0r3_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.2,paste0("sim1_measurement_m0r2_",simrep," ",Sys.Date(),".csv"))
 write.csv(res.rounding.1,paste0("sim1_measurement_m0r1_",simrep," ",Sys.Date(),".csv"))
-write.csv(res.rounding.0,paste0("sim1_measurement_m0r0_",simrep," ",Sys.Date(),".csv"))
